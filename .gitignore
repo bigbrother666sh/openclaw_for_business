@@ -1,0 +1,23 @@
+# OpenClaw 上游仓库（通过脚本管理）
+openclaw/
+
+# 工作区（运行时数据）
+workspace/
+
+# Node modules
+node_modules/
+
+# 系统文件
+.DS_Store
+*.log
+
+# IDE
+.vscode/
+.idea/
+
+# 临时文件
+*.tmp
+*.swp
+
+# 备份文件
+*.backup
