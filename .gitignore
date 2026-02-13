@@ -15,6 +15,9 @@ node_modules/
 .vscode/
 .idea/
 
+# AI assistant rules
+.kiro-rules.md
+
 # 临时文件
 *.tmp
 *.swp
