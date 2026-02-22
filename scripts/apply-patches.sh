@@ -14,6 +14,9 @@ echo "📦 Applying patches..."
 
 cd openclaw
 
+# 先恢复到干净的 upstream 状态，避免重复应用补丁导致失败
+git checkout -- . 2>/dev/null || true
+
 for patch in ../$PATCHES_DIR/*.patch; do
   if [ -f "$patch" ]; then
     echo "  → $(basename "$patch")"
@@ -23,5 +26,11 @@ for patch in ../$PATCHES_DIR/*.patch; do
     }
   fi
 done
+
+# Sync lockfile after git patches
+echo "📦 Syncing dependencies..."
+pnpm install --frozen-lockfile=false
+
+cd ..
 
 echo "✅ All patches applied"

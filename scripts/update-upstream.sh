@@ -7,7 +7,8 @@ echo "🔄 Updating OpenClaw upstream..."
 
 cd openclaw
 
-# 拉取最新代码
+# 先恢复到干净状态（清除之前应用的补丁），然后拉取最新代码
+git checkout -- . 2>/dev/null || true
 git pull origin main
 
 # 安装依赖（如果 package.json 有变化）

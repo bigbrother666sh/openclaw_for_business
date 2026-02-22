@@ -1,0 +1,371 @@
+diff --git a/Dockerfile b/Dockerfile
+index 255340cb0..b610e0253 100644
+--- a/Dockerfile
++++ b/Dockerfile
+@@ -28,7 +28,7 @@ RUN pnpm install --frozen-lockfile
+ # Optionally install Chromium and Xvfb for browser automation.
+ # Build with: docker build --build-arg OPENCLAW_INSTALL_BROWSER=1 ...
+ # Adds ~300MB but eliminates the 60-90s Playwright install on every container start.
+-# Must run after pnpm install so playwright-core is available in node_modules.
++# Must run after pnpm install so patchright-core is available in node_modules.
+ USER root
+ ARG OPENCLAW_INSTALL_BROWSER=""
+ RUN if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
+@@ -36,7 +36,7 @@ RUN if [ -n "$OPENCLAW_INSTALL_BROWSER" ]; then \
+       DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends xvfb && \
+       mkdir -p /home/node/.cache/ms-playwright && \
+       PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright \
+-      node /app/node_modules/playwright-core/cli.js install --with-deps chromium && \
++      node /app/node_modules/patchright-core/cli.js install --with-deps chromium && \
+       chown -R node:node /home/node/.cache/ms-playwright && \
+       apt-get clean && \
+       rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*; \
+diff --git a/docs/help/faq.md b/docs/help/faq.md
+index e60329e86..6c114ff46 100644
+--- a/docs/help/faq.md
++++ b/docs/help/faq.md
+@@ -1197,7 +1197,7 @@ include system packages, Homebrew, or bundled browsers. For a fuller setup:
+ - Persist `/home/node` with `OPENCLAW_HOME_VOLUME` so caches survive.
+ - Bake system deps into the image with `OPENCLAW_DOCKER_APT_PACKAGES`.
+ - Install Playwright browsers via the bundled CLI:
+-  `node /app/node_modules/playwright-core/cli.js install chromium`
++  `node /app/node_modules/patchright-core/cli.js install chromium`
+ - Set `PLAYWRIGHT_BROWSERS_PATH` and ensure the path is persisted.
+ 
+ Docs: [Docker](/install/docker), [Browser](/tools/browser).
+diff --git a/docs/install/docker.md b/docs/install/docker.md
+index 8826192c1..6e8349f98 100644
+--- a/docs/install/docker.md
++++ b/docs/install/docker.md
+@@ -213,7 +213,7 @@ export OPENCLAW_DOCKER_APT_PACKAGES="git curl jq"
+ 
+ ```bash
+ docker compose run --rm openclaw-cli \
+-  node /app/node_modules/playwright-core/cli.js install chromium
++  node /app/node_modules/patchright-core/cli.js install chromium
+ ```
+ 
+ If you need Playwright to install system deps, rebuild the image with
+diff --git a/docs/tools/browser.md b/docs/tools/browser.md
+index 4d8492f21..09065a364 100644
+--- a/docs/tools/browser.md
++++ b/docs/tools/browser.md
+@@ -329,7 +329,7 @@ error. ARIA snapshots and basic screenshots still work for openclaw-managed Chro
+ For the Chrome extension relay driver, ARIA snapshots and screenshots require Playwright.
+ 
+ If you see `Playwright is not available in this gateway build`, install the full
+-Playwright package (not `playwright-core`) and restart the gateway, or reinstall
++Playwright package (not `patchright-core`) and restart the gateway, or reinstall
+ OpenClaw with browser support.
+ 
+ #### Docker Playwright install
+@@ -339,7 +339,7 @@ Use the bundled CLI instead:
+ 
+ ```bash
+ docker compose run --rm openclaw-cli \
+-  node /app/node_modules/playwright-core/cli.js install chromium
++  node /app/node_modules/patchright-core/cli.js install chromium
+ ```
+ 
+ To persist browser downloads, set `PLAYWRIGHT_BROWSERS_PATH` (for example,
+diff --git a/docs/zh-CN/install/docker.md b/docs/zh-CN/install/docker.md
+index 08a84d2d6..7ad17e80d 100644
+--- a/docs/zh-CN/install/docker.md
++++ b/docs/zh-CN/install/docker.md
+@@ -183,7 +183,7 @@ export OPENCLAW_DOCKER_APT_PACKAGES="git curl jq"
+ 
+ ```bash
+ docker compose run --rm openclaw-cli \
+-  node /app/node_modules/playwright-core/cli.js install chromium
++  node /app/node_modules/patchright-core/cli.js install chromium
+ ```
+ 
+ 如果你需要 Playwright 安装系统依赖，使用 `OPENCLAW_DOCKER_APT_PACKAGES` 重建镜像，而不是在运行时使用 `--with-deps`。
+diff --git a/docs/zh-CN/tools/browser.md b/docs/zh-CN/tools/browser.md
+index 048a98703..323a40644 100644
+--- a/docs/zh-CN/tools/browser.md
++++ b/docs/zh-CN/tools/browser.md
+@@ -310,7 +310,7 @@ openclaw browser create-profile \
+ 
+ 某些功能（navigate/act/AI 快照/角色快照、元素截图、PDF）需要 Playwright。如果未安装 Playwright，这些端点会返回明确的 501 错误。ARIA 快照和基本截图对于 openclaw 托管的 Chrome 仍然有效。对于 Chrome 扩展中继驱动程序，ARIA 快照和截图需要 Playwright。
+ 
+-如果你看到 `Playwright is not available in this gateway build`，请安装完整的 Playwright 包（不是 `playwright-core`）并重启 Gateway 网关，或者重新安装带浏览器支持的 OpenClaw。
++如果你看到 `Playwright is not available in this gateway build`，请安装完整的 Playwright 包（不是 `patchright-core`）并重启 Gateway 网关，或者重新安装带浏览器支持的 OpenClaw。
+ 
+ #### Docker Playwright 安装
+ 
+@@ -318,7 +318,7 @@ openclaw browser create-profile \
+ 
+ ```bash
+ docker compose run --rm openclaw-cli \
+-  node /app/node_modules/playwright-core/cli.js install chromium
++  node /app/node_modules/patchright-core/cli.js install chromium
+ ```
+ 
+ 要持久化浏览器下载，设置 `PLAYWRIGHT_BROWSERS_PATH`（例如 `/home/node/.cache/ms-playwright`）并确保 `/home/node` 通过 `OPENCLAW_HOME_VOLUME` 或绑定挂载持久化。参见 [Docker](/install/docker)。
+diff --git a/package.json b/package.json
+index 292381102..5bba44bfd 100644
+--- a/package.json
++++ b/package.json
+@@ -180,7 +180,7 @@
+     "opusscript": "^0.0.8",
+     "osc-progress": "^0.3.0",
+     "pdfjs-dist": "^5.4.624",
+-    "playwright-core": "1.58.2",
++    "patchright-core": "1.57.0",
+     "qrcode-terminal": "^0.12.0",
+     "sharp": "^0.34.5",
+     "sqlite-vec": "0.1.7-alpha.2",
+diff --git a/pnpm-lock.yaml b/pnpm-lock.yaml
+index 6d086e082..46eb97ce3 100644
+--- a/pnpm-lock.yaml
++++ b/pnpm-lock.yaml
+@@ -149,12 +149,12 @@ importers:
+       osc-progress:
+         specifier: ^0.3.0
+         version: 0.3.0
++      patchright-core:
++        specifier: 1.57.0
++        version: 1.57.0
+       pdfjs-dist:
+         specifier: ^5.4.624
+         version: 5.4.624
+-      playwright-core:
+-        specifier: 1.58.2
+-        version: 1.58.2
+       qrcode-terminal:
+         specifier: ^0.12.0
+         version: 0.12.0
+@@ -4820,6 +4820,11 @@ packages:
+   partial-json@0.1.7:
+     resolution: {integrity: sha512-Njv/59hHaokb/hRUjce3Hdv12wd60MtM9Z5Olmn+nehe0QDAsRtRbJPvJ0Z91TusF0SuZRIvnM+S4l6EIP8leA==}
+ 
++  patchright-core@1.57.0:
++    resolution: {integrity: sha512-um/9Wue7IFAa9UDLacjNgDn62ub5GJe1b1qouvYpELIF9rsFVMNhRo/rRXYajupLwp5xKJ0sSjOV6sw8/HarBQ==}
++    engines: {node: '>=18'}
++    hasBin: true
++
+   path-is-absolute@1.0.1:
+     resolution: {integrity: sha512-AVbw3UJ2e9bq64vSaS9Am0fje1Pa8pbGqTTsmXfaIiMpnr5DlDhfJOuLj9Sf95ZPVDAUerDfEk88MPmPe7UCQg==}
+     engines: {node: '>=0.10.0'}
+@@ -10605,6 +10610,8 @@ snapshots:
+ 
+   partial-json@0.1.7: {}
+ 
++  patchright-core@1.57.0: {}
++
+   path-is-absolute@1.0.1: {}
+ 
+   path-key@3.1.1: {}
+diff --git a/src/browser/pw-ai.test.ts b/src/browser/pw-ai.test.ts
+index c182996ef..93138469d 100644
+--- a/src/browser/pw-ai.test.ts
++++ b/src/browser/pw-ai.test.ts
+@@ -1,6 +1,6 @@
+ import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+ 
+-vi.mock("playwright-core", () => ({
++vi.mock("patchright-core", () => ({
+   chromium: {
+     connectOverCDP: vi.fn(),
+   },
+@@ -51,16 +51,16 @@ function createBrowser(pages: unknown[]) {
+     contexts: () => [ctx],
+     on: vi.fn(),
+     close: vi.fn().mockResolvedValue(undefined),
+-  } as unknown as import("playwright-core").Browser;
++  } as unknown as import("patchright-core").Browser;
+ }
+ 
+-let chromiumMock: typeof import("playwright-core").chromium;
++let chromiumMock: typeof import("patchright-core").chromium;
+ let snapshotAiViaPlaywright: typeof import("./pw-tools-core.snapshot.js").snapshotAiViaPlaywright;
+ let clickViaPlaywright: typeof import("./pw-tools-core.interactions.js").clickViaPlaywright;
+ let closePlaywrightBrowserConnection: typeof import("./pw-session.js").closePlaywrightBrowserConnection;
+ 
+ beforeAll(async () => {
+-  const pw = await import("playwright-core");
++  const pw = await import("patchright-core");
+   chromiumMock = pw.chromium;
+   ({ snapshotAiViaPlaywright } = await import("./pw-tools-core.snapshot.js"));
+   ({ clickViaPlaywright } = await import("./pw-tools-core.interactions.js"));
+diff --git a/src/browser/pw-session.create-page.navigation-guard.test.ts b/src/browser/pw-session.create-page.navigation-guard.test.ts
+index 088cbeaa7..bf7abab0b 100644
+--- a/src/browser/pw-session.create-page.navigation-guard.test.ts
++++ b/src/browser/pw-session.create-page.navigation-guard.test.ts
+@@ -5,7 +5,7 @@ import { closePlaywrightBrowserConnection, createPageViaPlaywright } from "./pw-
+ const connectOverCdpMock = vi.fn();
+ const getChromeWebSocketUrlMock = vi.fn();
+ 
+-vi.mock("playwright-core", () => ({
++vi.mock("patchright-core", () => ({
+   chromium: {
+     connectOverCDP: (...args: unknown[]) => connectOverCdpMock(...args),
+   },
+@@ -39,7 +39,7 @@ function installBrowserMocks() {
+       send: sessionSend,
+       detach: sessionDetach,
+     })),
+-  } as unknown as import("playwright-core").BrowserContext;
++  } as unknown as import("patchright-core").BrowserContext;
+ 
+   const page = {
+     on: pageOn,
+@@ -47,13 +47,13 @@ function installBrowserMocks() {
+     goto: pageGoto,
+     title: pageTitle,
+     url: pageUrl,
+-  } as unknown as import("playwright-core").Page;
++  } as unknown as import("patchright-core").Page;
+ 
+   const browser = {
+     contexts: () => [context],
+     on: browserOn,
+     close: browserClose,
+-  } as unknown as import("playwright-core").Browser;
++  } as unknown as import("patchright-core").Browser;
+ 
+   connectOverCdpMock.mockResolvedValue(browser);
+   getChromeWebSocketUrlMock.mockResolvedValue(null);
+diff --git a/src/browser/pw-session.get-page-for-targetid.extension-fallback.test.ts b/src/browser/pw-session.get-page-for-targetid.extension-fallback.test.ts
+index bfb429ba4..70387f3c0 100644
+--- a/src/browser/pw-session.get-page-for-targetid.extension-fallback.test.ts
++++ b/src/browser/pw-session.get-page-for-targetid.extension-fallback.test.ts
+@@ -4,7 +4,7 @@ import { closePlaywrightBrowserConnection, getPageForTargetId } from "./pw-sessi
+ const connectOverCdpMock = vi.fn();
+ const getChromeWebSocketUrlMock = vi.fn();
+ 
+-vi.mock("playwright-core", () => ({
++vi.mock("patchright-core", () => ({
+   chromium: {
+     connectOverCDP: (...args: unknown[]) => connectOverCdpMock(...args),
+   },
+@@ -30,12 +30,12 @@ describe("pw-session getPageForTargetId", () => {
+       newCDPSession: vi.fn(async () => {
+         throw new Error("Not allowed");
+       }),
+-    } as unknown as import("playwright-core").BrowserContext;
++    } as unknown as import("patchright-core").BrowserContext;
+ 
+     const page = {
+       on: pageOn,
+       context: () => context,
+-    } as unknown as import("playwright-core").Page;
++    } as unknown as import("patchright-core").Page;
+ 
+     // Fill pages() after page exists.
+     (context as unknown as { pages: () => unknown[] }).pages = () => [page];
+@@ -44,7 +44,7 @@ describe("pw-session getPageForTargetId", () => {
+       contexts: () => [context],
+       on: browserOn,
+       close: browserClose,
+-    } as unknown as import("playwright-core").Browser;
++    } as unknown as import("patchright-core").Browser;
+ 
+     connectOverCdpMock.mockResolvedValue(browser);
+     getChromeWebSocketUrlMock.mockResolvedValue(null);
+diff --git a/src/browser/pw-session.test.ts b/src/browser/pw-session.test.ts
+index a472cda6f..375ff6836 100644
+--- a/src/browser/pw-session.test.ts
++++ b/src/browser/pw-session.test.ts
+@@ -1,4 +1,4 @@
+-import type { Page } from "playwright-core";
++import type { Page } from "patchright-core";
+ import { describe, expect, it, vi } from "vitest";
+ import {
+   ensurePageState,
+@@ -103,13 +103,13 @@ describe("pw-session ensurePageState", () => {
+       url: () => "https://example.com/api",
+       resourceType: () => "xhr",
+       failure: () => ({ errorText: "net::ERR_FAILED" }),
+-    } as unknown as import("playwright-core").Request;
++    } as unknown as import("patchright-core").Request;
+ 
+     const resp = {
+       request: () => req,
+       status: () => 500,
+       ok: () => false,
+-    } as unknown as import("playwright-core").Response;
++    } as unknown as import("patchright-core").Response;
+ 
+     handlers.get("request")?.[0]?.(req);
+     handlers.get("response")?.[0]?.(resp);
+diff --git a/src/browser/pw-session.ts b/src/browser/pw-session.ts
+index 08371f4bd..7d4f7f54b 100644
+--- a/src/browser/pw-session.ts
++++ b/src/browser/pw-session.ts
+@@ -5,8 +5,8 @@ import type {
+   Page,
+   Request,
+   Response,
+-} from "playwright-core";
+-import { chromium } from "playwright-core";
++} from "patchright-core";
++import { chromium } from "patchright-core";
+ import { formatErrorMessage } from "../infra/errors.js";
+ import type { SsrFPolicy } from "../infra/net/ssrf.js";
+ import { appendCdpPath, fetchJson, getHeadersWithAuth, withCdpSocket } from "./cdp.helpers.js";
+diff --git a/src/browser/pw-tools-core.downloads.ts b/src/browser/pw-tools-core.downloads.ts
+index 12be32165..bf12747f6 100644
+--- a/src/browser/pw-tools-core.downloads.ts
++++ b/src/browser/pw-tools-core.downloads.ts
+@@ -1,7 +1,7 @@
+ import crypto from "node:crypto";
+ import fs from "node:fs/promises";
+ import path from "node:path";
+-import type { Page } from "playwright-core";
++import type { Page } from "patchright-core";
+ import { resolvePreferredOpenClawTmpDir } from "../infra/tmp-openclaw-dir.js";
+ import {
+   ensurePageState,
+diff --git a/src/browser/pw-tools-core.snapshot.ts b/src/browser/pw-tools-core.snapshot.ts
+index 076a33a11..065b239c8 100644
+--- a/src/browser/pw-tools-core.snapshot.ts
++++ b/src/browser/pw-tools-core.snapshot.ts
+@@ -53,7 +53,7 @@ export async function snapshotAiViaPlaywright(opts: {
+ 
+   const maybe = page as unknown as WithSnapshotForAI;
+   if (!maybe._snapshotForAI) {
+-    throw new Error("Playwright _snapshotForAI is not available. Upgrade playwright-core.");
++    throw new Error("Playwright _snapshotForAI is not available. Upgrade patchright-core.");
+   }
+ 
+   const result = await maybe._snapshotForAI({
+diff --git a/src/browser/pw-tools-core.state.ts b/src/browser/pw-tools-core.state.ts
+index aeeb8859d..041d8c097 100644
+--- a/src/browser/pw-tools-core.state.ts
++++ b/src/browser/pw-tools-core.state.ts
+@@ -1,5 +1,5 @@
+-import type { CDPSession, Page } from "playwright-core";
+-import { devices as playwrightDevices } from "playwright-core";
++import type { CDPSession, Page } from "patchright-core";
++import { devices as playwrightDevices } from "patchright-core";
+ import { ensurePageState, getPageForTargetId } from "./pw-session.js";
+ 
+ async function withCdpSession<T>(page: Page, fn: (session: CDPSession) => Promise<T>): Promise<T> {
+diff --git a/src/browser/routes/agent.shared.ts b/src/browser/routes/agent.shared.ts
+index aee566965..183fa8d2d 100644
+--- a/src/browser/routes/agent.shared.ts
++++ b/src/browser/routes/agent.shared.ts
+@@ -70,7 +70,7 @@ export async function requirePwAi(
+     501,
+     [
+       `Playwright is not available in this gateway build; '${feature}' is unsupported.`,
+-      "Install the full Playwright package (not playwright-core) and restart the gateway, or reinstall with browser support.",
++      "Install the full Playwright package (not patchright-core) and restart the gateway, or reinstall with browser support.",
+       "Docs: /tools/browser#playwright-requirement",
+     ].join("\n"),
+   );
+diff --git a/src/dockerfile.test.ts b/src/dockerfile.test.ts
+index 4e75caeb4..0c1d08943 100644
+--- a/src/dockerfile.test.ts
++++ b/src/dockerfile.test.ts
+@@ -16,7 +16,7 @@ describe("Dockerfile", () => {
+     expect(browserArgIndex).toBeGreaterThan(-1);
+     expect(browserArgIndex).toBeGreaterThan(installIndex);
+     expect(dockerfile).toContain(
+-      "node /app/node_modules/playwright-core/cli.js install --with-deps chromium",
++      "node /app/node_modules/patchright-core/cli.js install --with-deps chromium",
+     );
+     expect(dockerfile).toContain("apt-get install -y --no-install-recommends xvfb");
+   });

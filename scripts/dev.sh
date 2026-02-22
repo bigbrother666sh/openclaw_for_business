@@ -10,7 +10,7 @@ DATA_DIR="$PROJECT_ROOT/.openclaw-data"
 # 创建配置目录
 mkdir -p "$DATA_DIR/config"
 
-# 设置环境变量，将 OpenClaw 的所有路径指向项目内
+# Set env vars to point OpenClaw paths to project directory
 export OPENCLAW_STATE_DIR="$DATA_DIR"
 export OPENCLAW_CONFIG_PATH="$DATA_DIR/config/openclaw.json"
 export OPENCLAW_OAUTH_DIR="$DATA_DIR/credentials"
@@ -25,9 +25,9 @@ if [ ! -f "$OPENCLAW_CONFIG_PATH" ]; then
   fi
 fi
 
-# 应用补丁（如果有）
-if [ -d "patches" ] && [ "$(ls -A patches/*.patch 2>/dev/null)" ]; then
-  ./scripts/apply-patches.sh
+# Apply git patches if any exist
+if [ -d "$PROJECT_ROOT/patches" ] && ls "$PROJECT_ROOT/patches"/*.patch 2>/dev/null | grep -q .; then
+  "$PROJECT_ROOT/scripts/apply-patches.sh"
 fi
 
 # 检测 WSL2 环境并获取访问地址

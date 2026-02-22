@@ -11,6 +11,19 @@
 - 🔧 **补丁管理** - 基于 patch 的上游代码修改，易于维护和升级
 - 🔌 **插件扩展** - 业务插件独立开发，不修改上游代码
 
+## 🔥 重点新增：Patchright 反检测补丁
+
+本仓库已新增并默认接入一组高价值的反检测补丁，用于将上游浏览器自动化依赖从 `playwright-core` 切换到 `patchright-core`，显著降低常见自动化泄露风险。
+
+- 补丁文件：`patches/001-switch-playwright-to-patchright-core.patch`
+- 主要效果：
+  - Browser 能力统一基于 `patchright-core`
+  - `browser_test` 测试链路改为使用原生 `snapshotForAI`（AI snapshot）
+  - `dev.sh` / `update-upstream.sh` 流程下可自动重放该补丁
+- 使用方式：保持现有流程不变，正常执行 `./scripts/update-upstream.sh` 或 `./scripts/dev.sh gateway` 即可自动应用
+
+> 说明：若上游代码结构变化较大导致补丁无法应用，脚本会报错，此时需要更新补丁内容。
+
 ## 项目结构
 
 ```

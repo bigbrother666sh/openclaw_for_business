@@ -10,6 +10,14 @@
       }
     }
   },
+  "browser": {
+    "enabled": true,
+    "defaultProfile": "openclaw",
+    "headless": false,
+    "ssrfPolicy": {
+      "allowPrivateNetwork": true
+    }
+  },
   "channels": {
     "feishu": {
       "enabled": false,
