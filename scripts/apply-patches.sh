@@ -33,4 +33,17 @@ pnpm install --frozen-lockfile=false
 
 cd ..
 
+# Copy custom skills into the bundled skills directory
+CUSTOM_SKILLS_DIR="$PATCHES_DIR/skills"
+if [ -d "$CUSTOM_SKILLS_DIR" ]; then
+  echo "📚 Installing custom skills..."
+  for skill_dir in "$CUSTOM_SKILLS_DIR"/*/; do
+    if [ -f "${skill_dir}SKILL.md" ]; then
+      skill_name="$(basename "$skill_dir")"
+      echo "  → $skill_name"
+      cp -r "$skill_dir" "openclaw/skills/$skill_name"
+    fi
+  done
+fi
+
 echo "✅ All patches applied"

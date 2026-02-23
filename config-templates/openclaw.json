@@ -18,6 +18,26 @@
       "allowPrivateNetwork": true
     }
   },
+  "skills": {
+    "entries": {
+      "browser-guide": {
+        "enabled": true
+      },
+      "apple-notes": { "enabled": false },
+      "apple-reminders": { "enabled": false },
+      "bear-notes": { "enabled": false },
+      "things-mac": { "enabled": false },
+      "spotify-player": { "enabled": false },
+      "blucli": { "enabled": false },
+      "sonoscli": { "enabled": false },
+      "openhue": { "enabled": false },
+      "eightctl": { "enabled": false },
+      "peekaboo": { "enabled": false },
+      "blogwatcher": { "enabled": false },
+      "summarize": { "enabled": false },
+      "ordercli": { "enabled": false }
+    }
+  },
   "channels": {
     "feishu": {
       "enabled": false,
