@@ -22,7 +22,7 @@ node_modules/
 # 临时文件
 *.tmp
 *.swp
-browser_test/
+patchright/
 
 # 备份文件
 *.backup

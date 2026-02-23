@@ -11,9 +11,9 @@
 - 🔧 **补丁管理** - 基于 patch 的上游代码修改，易于维护和升级
 - 🔌 **插件扩展** - 业务插件独立开发，不修改上游代码
 
-## 🔥 重点新增：Patchright 反检测补丁
+## 🔥 Patchright 反检测补丁
 
-本仓库已新增并默认接入一组高价值的反检测补丁，用于将上游浏览器自动化依赖从 `playwright-core` 切换到 `patchright-core`，显著降低常见自动化泄露风险。
+我们使用 [Patchright](https://github.com/Kaliiiiiiiiii-Vinyzu/patchright) 反检测补丁，将上游浏览器自动化依赖从 `playwright-core` 切换到 `patchright-core`，从而让 Openclaw 托管浏览器具有了与 relay 模式一样的能力（在反侦测上甚至更佳），同时又无需在 Chrome 上安装未授权的浏览器扩展。
 
 - 补丁文件：`patches/001-switch-playwright-to-patchright-core.patch`
 - 主要效果：
