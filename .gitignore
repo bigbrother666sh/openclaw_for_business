@@ -1,9 +1,9 @@
 # OpenClaw 上游仓库（通过脚本管理）
 openclaw/
 
-# 运行时数据
-.openclaw-data/
+# 运行时数据（遗留路径，防止误创建）
 workspace/
+.openclaw-data/
 
 # Node modules
 node_modules/

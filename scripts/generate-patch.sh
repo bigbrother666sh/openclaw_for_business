@@ -22,7 +22,7 @@ PATCH_FILE="../$PATCHES_DIR/${NEXT_NUM}-${PATCH_NAME}.patch"
 
 echo "📝 Generating patch: $(basename "$PATCH_FILE")"
 
-git diff > "$PATCH_FILE"
+git diff -- . ':(exclude)pnpm-lock.yaml' > "$PATCH_FILE"
 
 if [ ! -s "$PATCH_FILE" ]; then
   echo "⚠️  No changes detected"

@@ -1,18 +1,14 @@
 #!/bin/bash
-# 重新安装 Gateway Daemon 以更新环境变量
+# 重新安装 Gateway Daemon
 # 支持 macOS (LaunchAgent)、Linux (systemd)、Windows (Task Scheduler)
+# 使用默认存储位置 ~/.openclaw
 
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-DATA_DIR="$PROJECT_ROOT/.openclaw-data"
-
-export OPENCLAW_STATE_DIR="$DATA_DIR"
-export OPENCLAW_CONFIG_PATH="$DATA_DIR/config/openclaw.json"
-export OPENCLAW_OAUTH_DIR="$DATA_DIR/credentials"
 
 echo "🔧 Reinstalling Gateway Daemon..."
-echo "   Data: $OPENCLAW_STATE_DIR"
+echo "   Data: ~/.openclaw"
 
 # 应用补丁（如果有）
 if [ -d "patches" ] && [ "$(ls -A patches/*.patch 2>/dev/null)" ]; then

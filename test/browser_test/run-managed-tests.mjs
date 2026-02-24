@@ -38,7 +38,6 @@ import { createInterface }          from 'node:readline';
 const __dirname    = dirname(fileURLToPath(import.meta.url));
 const PROJECT_ROOT = resolve(__dirname, '..');
 const OPENCLAW_DIR = join(PROJECT_ROOT, 'openclaw');
-const DATA_DIR     = join(PROJECT_ROOT, '.openclaw-data');
 
 // ── Argument parsing ──────────────────────────────────────────────────────────
 const argv    = process.argv.slice(2);
@@ -59,13 +58,8 @@ const SNAPSHOTS = join(RUN_DIR, 'snapshots');
 mkdirSync(CASES, { recursive: true });
 mkdirSync(SNAPSHOTS,  { recursive: true });
 
-// ── Environment for openclaw processes ───────────────────────────────────────
-const OC_ENV = {
-  ...process.env,
-  OPENCLAW_STATE_DIR:   DATA_DIR,
-  OPENCLAW_CONFIG_PATH: join(DATA_DIR, 'config', 'openclaw.json'),
-  OPENCLAW_OAUTH_DIR:   join(DATA_DIR, 'credentials'),
-};
+// ── Environment for openclaw processes (uses default ~/.openclaw) ────────────
+const OC_ENV = { ...process.env };
 
 // ── openclaw CLI wrapper ──────────────────────────────────────────────────────
 function oc(args, { ms = TIMEOUT_MS, safe = false } = {}) {

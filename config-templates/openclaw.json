@@ -1,12 +1,76 @@
 {
+  "auth": {
+    "profiles": {
+      "siliconflow:default": {
+        "provider": "openai",
+        "mode": "api_key"
+      }
+    }
+  },
+  "models": {
+    "providers": {
+      "siliconflow": {
+        "api": "openai-completions",
+        "baseUrl": "https://api.siliconflow.cn/v1",
+        "apiKey": "",
+        "models": [
+          {
+            "id": "moonshotai/Kimi-K2-Thinking",
+            "name": "Kimi K2 Thinking",
+            "input": ["text"],
+            "contextWindow": 256000,
+            "maxTokens": 8192
+          },
+          {
+            "id": "zai-org/GLM-4.6V",
+            "name": "GLM-4.6V",
+            "input": ["text", "image"],
+            "contextWindow": 128000,
+            "maxTokens": 8192
+          }
+        ]
+      }
+    }
+  },
   "agents": {
     "defaults": {
-      "provider": "anthropic",
-      "model": "claude-3-5-sonnet-20241022",
-      "memorySearch": {
-        "enabled": true,
-        "provider": "openai",
-        "model": "text-embedding-3-small"
+      "model": {
+        "primary": "siliconflow/moonshotai/Kimi-K2-Thinking"
+      },
+      "imageModel": {
+        "primary": "siliconflow/zai-org/GLM-4.6V"
+      },
+      "compaction": {
+        "mode": "safeguard"
+      },
+      "maxConcurrent": 4,
+      "subagents": {
+        "maxConcurrent": 8
+      }
+    }
+  },
+  "messages": {
+    "ackReactionScope": "group-mentions"
+  },
+  "commands": {
+    "native": "auto",
+    "nativeSkills": "auto",
+    "restart": true,
+    "ownerDisplay": "raw"
+  },
+  "hooks": {
+    "internal": {
+      "enabled": true,
+      "entries": {
+        "boot-md": {
+          "enabled": true
+        },
+        "command-logger": {
+          "enabled": true
+        },
+        "session-memory": {
+          "enabled": true
+        }
       }
     }
   },
@@ -15,7 +79,7 @@
     "defaultProfile": "openclaw",
     "headless": false,
     "ssrfPolicy": {
-      "allowPrivateNetwork": true
+      "dangerouslyAllowPrivateNetwork": true
     }
   },
   "skills": {
@@ -40,23 +104,45 @@
   },
   "channels": {
     "feishu": {
-      "enabled": false,
-      "accounts": {
-        "default": {
-          "appId": "",
-          "appSecret": "",
-          "domain": "feishu"
-        }
-      }
+      "enabled": true,
+      "appId": "",
+      "appSecret": "",
+      "domain": "feishu",
+      "groupPolicy": "disabled",
+      "accounts": {}
     }
   },
   "gateway": {
     "port": 18789,
-    "host": "127.0.0.1"
+    "mode": "local",
+    "bind": "loopback",
+    "auth": {
+      "mode": "token",
+      "token": ""
+    },
+    "tailscale": {
+      "mode": "off",
+      "resetOnExit": false
+    },
+    "nodes": {
+      "denyCommands": [
+        "camera.snap",
+        "camera.clip",
+        "screen.record",
+        "calendar.add",
+        "contacts.add",
+        "reminders.add"
+      ]
+    }
   },
   "plugins": {
-    "feishu": {
-      "enabled": false
+    "load": {
+      "paths": ["openclaw/extensions/feishu"]
+    },
+    "entries": {
+      "feishu": {
+        "enabled": true
+      }
     }
   }
 }

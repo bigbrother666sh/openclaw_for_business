@@ -5,7 +5,7 @@
 ## ✨ 特性
 
 - 🏢 **企业级配置** - 预配置开箱即用，增加多种“一键”命令（一键启动、一键安装、一键部署……）
-- 📦 **开箱即用** - 所有配置和数据在项目内，无需污染用户目录
+- 📦 **开箱即用** - 预设配置模板，使用上游默认存储位置 `~/.openclaw`
 - 🇨🇳 **国内优化** - 特别针对国内使用环境优化（去除用不上的渠道、增加国内常用渠道、插件等），
 - 📚 **知识库能力** - 增加知识库能力
 - 🔧 **补丁管理** - 基于 patch 的上游代码修改，易于维护和升级
@@ -29,16 +29,14 @@
 ```
 openclaw_for_business/
 ├── openclaw/              # 上游仓库（git clone）
-├── .openclaw-data/        # 运行时数据（不提交）
-│   ├── config/           # 配置文件
-│   ├── workspace/        # Agent 工作区（OpenClaw 自动创建）
-│   └── ...               # 其他运行时数据（OpenClaw 自动创建）
 ├── config-templates/      # 配置模板（开箱即用）
 ├── patches/               # 业务补丁
 ├── extensions/            # 业务扩展插件
 ├── scripts/              # 工具脚本
 └── docs/                 # 文档
 ```
+
+运行时数据使用上游默认位置 `~/.openclaw/`。
 
 ## 快速开始
 
@@ -135,7 +133,7 @@ pnpm openclaw daemon uninstall
 - ✅ 崩溃自动重启
 - ✅ 性能更好（预编译）
 
-所有配置和数据都在 `.openclaw-data/` 目录，不会影响 `~/.openclaw`。
+配置和数据使用上游默认位置 `~/.openclaw/`。
 
 ### 常用命令
 
@@ -161,20 +159,9 @@ pnpm openclaw daemon uninstall
 
 ## 对比原版修改点
 
-### 1. 项目内配置
+### 1. 配置模板
 
-通过环境变量将 OpenClaw 的所有路径指向项目内：
-
-```bash
-OPENCLAW_STATE_DIR=./.openclaw-data
-OPENCLAW_CONFIG_PATH=./.openclaw-data/config/openclaw.json
-```
-
-**好处：**
-- ✅ 开发环境隔离，不污染 `~/.openclaw`
-- ✅ 配置可版本控制（通过模板）
-- ✅ 多项目并行开发
-- ✅ 客户部署开箱即用
+`config-templates/openclaw.json` 提供开箱即用的配置模板。首次启动时，`dev.sh` 会自动将模板复制到 `~/.openclaw/openclaw.json`。
 
 ### 2. 补丁管理
 
