@@ -85,6 +85,23 @@ cd openclaw && pnpm build && cd ..
 - 默认端口：18789
 - 支持平台：macOS (LaunchAgent)、Linux (systemd)、WSL2
 
+## Development Workflow
+
+### 远程仓库
+
+- **origin** → `git@github.com:bigbrother666sh/openclaw_for_business.git`（个人开发仓库）
+- **upstream** → `git@github.com:TeamWiseFlow/openclaw_for_business.git`（TeamWiseflow 正式发布仓库）
+
+### 开发流程
+
+1. 默认在 `main` 分支上开发，按需创建功能分支
+2. 开发完成后推送到 **origin**（个人仓库）
+3. 阶段性成果通过 GitHub PR 从 origin 合并到 **upstream**（TeamWiseflow 正式仓库）
+
+## Permissions
+
+Claude Code 被授权在本仓库中执��任何 git 命令（包括 push、branch、tag 等），无需逐次确认。
+
 ## 沟通语言
 
 用户使用中文沟通，回复请使用中文。
