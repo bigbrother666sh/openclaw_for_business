@@ -1,4 +1,4 @@
-# HRBP Agent System — 快速上手
+# 多 Agent 系统 — 快速上手
 
 ## 前提条件
 
@@ -6,21 +6,27 @@
 - pnpm
 - OpenClaw 上游代码已克隆到 `openclaw/` 目录
 
-## 一键安装
+## 一键启动
 
 ```bash
-# 1. 安装 HRBP Agent System（部署 workspace、模板、配置）
-./scripts/setup-hrbp.sh
+# 1. 安装依赖
+cd openclaw && pnpm install && cd ..
 
-# 2. 编辑配置（填入 API Key、飞书 App 信息等）
-vim ~/.openclaw/openclaw.json
-
-# 3. 启动 Gateway
+# 2. 启动（自动安装 Agent 系统 + 应用 addon）
 ./scripts/dev.sh gateway
+
+# 3. 编辑配置（填入 API Key、飞书 App 信息等）
+vim ~/.openclaw/openclaw.json
 
 # 4. 启动 Bridge（飞书 Bot 连接）
 cd bridge && node bridge.mjs
 ```
+
+首次运行 `dev.sh` 时会自动：
+- 从 `config-templates/` 创建默认配置
+- 安装 Main Agent 和 HRBP Agent 的 workspace（含 HRBP 专属技能）
+- 安装角色参考模板
+- 安装全局共享技能 + 应用 addon
 
 ## 验证
 
@@ -49,6 +55,10 @@ cd bridge && node bridge.mjs
 ## Agent 管理脚本
 
 ```bash
+# 手动安装/重装 Agent 系统
+./scripts/setup-crew.sh
+./scripts/setup-crew.sh --force  # 覆盖已有 workspace
+
 # 添加新 Agent（workspace 必须已存在）
 ./scripts/add-agent.sh <agent-id>
 
@@ -65,6 +75,33 @@ cd bridge && node bridge.mjs
 # 列出所有 Agent
 ./scripts/list-agents.sh
 ```
+
+## 通过 Addon 增加 Agent
+
+第三方 addon 可以通过 `crew/` 目录贡献预制 Agent：
+
+```
+addons/my-addon/
+├── addon.json
+├── skills/             # 可选：全局技能（所有 Agent 可见）
+│   └── my-skill/SKILL.md
+└── crew/               # 可选：预制 Agent
+    └── my-agent/       # workspace 模板
+        ├── SOUL.md
+        ├── IDENTITY.md
+        ├── AGENTS.md
+        ├── MEMORY.md
+        ├── USER.md
+        ├── TOOLS.md
+        ├── TASKS.md
+        ├── HEARTBEAT.md
+        └── skills/     # 可选：Agent 专属技能
+            └── my-agent-skill/SKILL.md
+```
+
+运行 `dev.sh` 或 `reinstall-daemon.sh` 时，addon 中的 Agent 会被自动安装并注册。
+全局 skills 安装到 `openclaw/skills/`（所有 Agent 可见），Agent 专属 skills 安装到对应 workspace。
+这些 Agent 由 HRBP 统一管理，可以通过 HRBP 进行修改和移除。
 
 ## 目录结构
 

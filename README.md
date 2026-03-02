@@ -42,25 +42,29 @@
 ```
 openclaw_for_business/
 ├── openclaw/              # 上游仓库（git clone，禁止直接修改）
-├── addons/                # addon 安装目录（运行时由 apply-addons.sh 扫描）
-│   └── hrbp-system/      # 多 Agent 管理系统 addon
+├── crew/                  # 多 Agent 系统（内置核心）
+│   ├── shared/            # 共享协议（RULES.md、TEMPLATES.md）
+│   ├── workspaces/        # Agent workspace 模板（main + hrbp）
+│   │   └── hrbp/skills/   # HRBP 专属技能（recruit/modify/remove）
+│   └── role-templates/    # 角色参考模板（供 HRBP 招聘时使用）
+├── skills/                # 全局共享技能（所有 Agent 可见）
+├── addons/                # 第三方 addon 安装目录（不跟踪子目录）
 ├── config-templates/      # 配置模板（开箱即用的最佳实践）
-│   ├── openclaw.json     # 默认配置模板
-│   └── hrbp-system/      # HRBP 系统模板（workspace、共享规则、角色参考）
-├── bridge/               # 飞书 Bridge（飞书 Bot ↔ Gateway 连接器）
-├── scripts/              # 工具脚本
-│   ├── dev.sh            # 开发模式启动
-│   ├── apply-addons.sh   # 通用 addon 加载器
-│   ├── setup-hrbp.sh     # HRBP 系统安装
-│   ├── add-agent.sh      # 注册新 Agent
-│   ├── modify-agent.sh   # 修改 Agent 渠道绑定
-│   ├── remove-agent.sh   # 移除 Agent
-│   ├─── list-agents.sh    # 列出所有 Agent
+│   └── openclaw.json      # 默认配置模板
+├── bridge/                # 飞书 Bridge（飞书 Bot ↔ Gateway 连接器）
+├── scripts/               # 工具脚本
+│   ├── dev.sh             # 开发模式启动（自动安装 Agent 系统 + addon）
+│   ├── setup-crew.sh      # 多 Agent 系统安装（幂等）
+│   ├── apply-addons.sh    # 全局 skills + addon 加载器
+│   ├── add-agent.sh       # 注册新 Agent
+│   ├── modify-agent.sh    # 修改 Agent 渠道绑定
+│   ├── remove-agent.sh    # 移除 Agent
+│   ├── list-agents.sh     # 列出所有 Agent
 │   ├── update-upstream.sh # 更新上游代码
 │   ├── reinstall-daemon.sh # 生产模式安装后台服务
 │   ├── generate-patch.sh  # 生成补丁（给 addon 开发者用）
-│   └── setup-wsl2.sh     # WSL2 环境配置
-└── docs/                 # 项目文档
+│   └── setup-wsl2.sh      # WSL2 环境配置
+└── docs/                  # 项目文档
 ```
 
 运行时数据使用上游默认位置 `~/.openclaw/`。
@@ -104,7 +108,8 @@ cd ..
 
 首次启动时，`dev.sh` 会：
 1. 自动从 `config-templates/` 创建默认配置到 `~/.openclaw/openclaw.json`
-2. 自动扫描 `addons/` 并应用所有 addon（overrides + patches + skills）
+2. 自动安装多 Agent 系统（Main Agent + HRBP Agent）
+3. 自动安装 crew 内置技能 + 扫描并应用所有 addon
 
 ### WSL2 用户
 
@@ -132,8 +137,8 @@ cd openclaw && pnpm build && cd ..
 ./scripts/update-upstream.sh          # 更新上游 + 重新应用 addon
 ./scripts/reinstall-daemon.sh         # 生产部署
 
-# HRBP 多 Agent 管理
-./scripts/setup-hrbp.sh              # 首次安装 HRBP 系统
+# Agent 管理
+./scripts/setup-crew.sh              # 手动安装/重装 Agent 系统
 ./scripts/list-agents.sh             # 列出所有 Agent
 ./scripts/add-agent.sh <id>          # 注册新 Agent
 ./scripts/modify-agent.sh <id> --bind wechat:wx_xxx  # 添加渠道绑定
@@ -149,20 +154,22 @@ addons/<name>/
 ├── addon.json          # 元数据（必须）
 ├── overrides.sh        # 可选：pnpm overrides / 依赖替换
 ├── patches/*.patch     # 可选：git patch 代码改动
-└── skills/*/SKILL.md   # 可选：自定义技能
+├── skills/*/SKILL.md   # 可选：自定义技能
+└── agents/*/           # 可选：预制 Agent（workspace 模板，由 HRBP 管理）
 ```
 
-三层加载机制按稳定性递减排列：
-1. **overrides** — 依赖替换，不依赖源码行号，��稳健
+四层加载机制按稳定性递减排列：
+1. **overrides** — 依赖替换，不依赖源码行号，最稳健
 2. **patches** — git patch，精确代码改动，上游更新时可能需要调整
 3. **skills** — 自定义技能文件，独立于源码
+4. **crew** — 预制 Agent（workspace + Agent 专属 skills），自动安装并注册
 
 详见 `scripts/apply-addons.sh` 源码。
 
 ## 文档
 
-- [HRBP 多 Agent 系统](docs/hrbp-system.md) - 架构设计和组件说明
-- [HRBP 快速上手](docs/quick-start.md) - 安装和使用指南
+- [多 Agent 系统架构](docs/hrbp-system.md) - 架构设计和组件说明
+- [快速上手](docs/quick-start.md) - 安装和使用指南
 - [OpenClaw 分析](docs/introduce_to_clawd_by_claude.md) - 上游代码架构分析
 
 ## 许可证

@@ -1,9 +1,14 @@
-# HRBP Agent System
+# 多 Agent 系统架构
 
 ## 概述
 
-HRBP Agent System 是一套多 Agent 管理系统，采用**混合路由模式**：
+多 Agent 系统是 openclaw-for-business 的核心组件，定义在项目根目录的 `crew/` 中。
 
+核心理念：通过预制一系列具有不同专业角色定义、Rules 定义和技能配比的 Agent，实现：
+1. **任务专业性** — 每个 Agent 聚焦特定领域
+2. **并行处理** — 利用 OpenClaw 的 `sessions_spawn` 把任务拆到子进程完成
+
+采用**混合路由模式**：
 - **模式 A（统一入口）**：用户通过飞书 Bot 与 Main Agent 对话，Main Agent 通过 `sessions_spawn` 分发给子 Agent
 - **模式 B（渠道直连）**：子 Agent 通过 OpenClaw 原生 `bindings` 直接绑定到特定渠道（如微信）
 
@@ -16,7 +21,41 @@ HRBP Agent System 是一套多 Agent 管理系统，采用**混合路由模式**
 模式 B: 微信用户 → OpenClaw channel → Gateway bindings → 子 Agent（直接响应）
 ```
 
-**进程模型**：Gateway 单进程，所有 Agent 在内部运行（逻辑隔离）。
+**进程���型**：Gateway 单进程，所有 Agent 在内部运行（逻辑隔离）。
+
+## 源码结构（crew/）
+
+```
+crew/
+├── shared/            # 共享协议（所有 Agent 共用）
+│   ├── RULES.md       # Autonomy Ladder (L1/L2/L3)、QAPS 任务分类
+│   └── TEMPLATES.md   # Closeout 和 Checkpoint 模板
+├── workspaces/        # 内置 Agent 的 workspace 模板
+│   ├── main/          # Main Agent（路由调度器）
+│   └── hrbp/          # HRBP Agent（默认预制的第一个 Agent）
+│       └── skills/    # HRBP 专属技能
+│           ��── hrbp-recruit/  # 招聘新 Agent
+│           ├── hrbp-modify/   # 修改已有 Agent
+│           └── hrbp-remove/   # 移除 Agent
+└── role-templates/    # 角色参考模板（供 HRBP 招聘时使用）
+    ├── _template/     # 空白 8 文件模板
+    ├── developer.md
+    ├── customer-service.md
+    ├── market-analyst.md
+    ├── content-writer.md
+    └── operations.md
+
+skills/                # 全局共享技能（项目根目录，所有 Agent 可见）
+```
+
+### 技能两级体系
+
+与 OpenClaw 原生 skill 加载机制对齐：
+
+| 级别 | 位置 | 安装到 | 可见范围 |
+|------|------|--------|----------|
+| 全局共享 | `skills/`（项目根目录） | `openclaw/skills/` | 所有 Agent |
+| Agent 专属 | `crew/workspaces/<agent>/skills/` | `~/.openclaw/workspace-<agent>/skills/` | 仅该 Agent |
 
 ## 核心组件
 
@@ -26,7 +65,7 @@ HRBP Agent System 是一套多 Agent 管理系统，采用**混合路由模式**
 - 汇报子 Agent 结果
 - 不确定时询问用户
 
-### HRBP Agent（预制子 Agent）
+### HRBP Agent（默认预制的第一个 Agent）
 - 管理 Agent 完整生命周期：招聘（创建）、调岗（修改）、解雇（删除）
 - 受保护，不可删除
 - 三个 Skill：`hrbp-recruit`、`hrbp-modify`、`hrbp-remove`
@@ -35,6 +74,14 @@ HRBP Agent System 是一套多 Agent 管理系统，采用**混合路由模式**
 - 单飞书 Bot → 单 Main Agent
 - 入站：解析 `@alias` 路由提示
 - 出站：添加 `[AgentName]` 前缀标识
+
+## Agent 来源
+
+Agent 有三种创建方式：
+
+1. **内置预制**：`crew/workspaces/` 中定义的 Agent（main、hrbp），随 `dev.sh` / `reinstall-daemon.sh` 自动安装
+2. **HRBP 创建**：用户通过与 HRBP Agent 对话，根据需求创建定制化 Agent（默认方式）
+3. **Addon 预制**：第三�� addon 通过 `agents/` 目录贡献预制 Agent，由 `apply-addons.sh` 自动安装并注册，由 HRBP 统一管理
 
 ## Workspace 结构
 
@@ -60,7 +107,7 @@ HRBP Agent System 是一套多 Agent 管理系统，采用**混合路由模式**
 
 | 脚本 | 用途 |
 |------|------|
-| `setup-hrbp.sh` | 首次安装（部署 workspace、模板、配置） |
+| `setup-crew.sh` | 安装多 Agent 系统（部署 workspace、模板、配置，幂等） |
 | `add-agent.sh` | 注册新 Agent |
 | `modify-agent.sh` | 修改 Agent 渠道绑定 |
 | `remove-agent.sh` | 移除 Agent（workspace 归档） |

@@ -19,10 +19,8 @@ pnpm build
 
 cd ..
 
-# 应用 addons（overrides + patches + skills）
-if [ -d "addons" ] && [ -n "$(ls -A addons 2>/dev/null)" ]; then
-  ./scripts/apply-addons.sh
-fi
+# 应用 crew skills + addons
+./scripts/apply-addons.sh
 
 echo ""
 echo "✅ Update complete!"

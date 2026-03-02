@@ -6,6 +6,7 @@
 - `modify-agent.sh`: Update agent bindings in openclaw.json
 - `remove-agent.sh`: Unregister agent and archive workspace
 - `list-agents.sh`: View current agent roster
+- `agent-usage.sh`: Query agent model usage and cost data
 
 ## Tool Usage Rules
 - Always read existing files before modifying
