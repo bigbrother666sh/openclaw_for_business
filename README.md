@@ -15,15 +15,17 @@
 
 我们会不断更新代码，如果你有具体思路或想法也欢迎进群讨论，可以先添加作者微信：bigbrother666sh
 
-## 本项目做什么？
+## 本项目是什么？
 
-**openclaw-for-business 是 [OpenClaw](https://github.com/openclaw/openclaw) 的一套"最佳实践"预配置**，让你开箱即用，无需折腾配置。
+**openclaw-for-business 是 [OpenClaw](https://github.com/openclaw/openclaw) 的一套预制了"最佳实践"的改良版本**，具有开箱即用、专为 business（能够实践搞钱）场景配置、充分适配国内生态环境的特点。
 
-它**不修改上游代码**，而是通过以下方式扩展能力：
+相对于原版的具体**增强点**：
 
 - **配置模板** — 预设国内可用的模型、渠道、技能等配置
-- **Addon 机制** — 通过标准化的 addon 加载器，按需安装第三方能力增强包
 - **工具脚本** — 一键启动、一键部署、一键更新
+- **多 Agent 机制** - 参考 [opencrew](https://github.com/AlexAnys/opencrew) 自动配置多 Agent 机制，你拥有的不再是一个“私人助理”，而是一个”小公司“，并且默认配置第一个 Agent —— HRBP，通过它你可以自定义你需要的专家 Agent（比如财务、自媒体运营、情报官等……）。你也可以选择通过 Addon 生态直接使用社区贡献的 Agent。
+- **默认更稳定的飞书交互** - 整合比官方飞书插件更稳定、能力更强大的飞书桥接方案（参考[feishu-openclaw](https://github.com/AlexAnys/feishu-openclaw))。未来还会按社区反馈逐步增加其他国内流行的协作平台（钉钉、企微……）
+- **Addon 机制** — 通过标准化的 addon 加载器，按需安装第三方能力增强包
 
 ### Addon 生态
 
@@ -32,7 +34,6 @@
 | Addon | 说明 | 仓库 |
 |-------|------|------|
 | [wiseflow](https://github.com/TeamWiseFlow/wiseflow) | 浏览器反检测 + 互联网能力增强 | `addons/` 目录 |
-| hrbp-system | 多 Agent 管理系统（混合路由 + HRBP 招聘/调岗/解雇） | 内置 |
 
 > 欢迎贡献更多 addon！参见下方 [Addon 开发](#addon-开发) 章节。
 
@@ -54,7 +55,7 @@ openclaw_for_business/
 │   ├── add-agent.sh      # 注册新 Agent
 │   ├── modify-agent.sh   # 修改 Agent 渠道绑定
 │   ├── remove-agent.sh   # 移除 Agent
-│   ���── list-agents.sh    # 列出所有 Agent
+│   ├─── list-agents.sh    # 列出所有 Agent
 │   ├── update-upstream.sh # 更新上游代码
 │   ├── reinstall-daemon.sh # 生产模式安装后台服务
 │   ├── generate-patch.sh  # 生成补丁（给 addon 开发者用）
