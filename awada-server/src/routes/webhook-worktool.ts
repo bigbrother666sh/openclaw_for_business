@@ -20,7 +20,7 @@ import { RobotInfo } from '@/services/worktool/types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { parseOnboardCommand, handleOnboardCommand, parseAnnouncementCommand, handleAnnouncementCommand, isDirectorMessage } from '@/services/director';
+import { parseAnnouncementCommand, handleAnnouncementCommand, isDirectorMessage } from '@/services/director';
 import { parseCreateGroupCommand, handleCreateGroupCommand, parseStationAnnouncementCommand, handleStationAnnouncementCommand } from '@/services/director/group';
 
 const logger = createLogger('WorkTool-Webhook');
@@ -67,13 +67,21 @@ const ENABLE_MESSAGE_BUFFER = false;
 
 /**
  * 指令集配置：针对特定指令返回特定文案
- * key: 指令关键词（不区分大小写）
- * value: 返回的文案
+ * 通过环境变量 WORKTOOL_COMMAND_RESPONSES 配置，格式为 JSON 字符串
+ * 例如：WORKTOOL_COMMAND_RESPONSES='{"link":"付款链接内容","help":"帮助内容"}'
  */
-const COMMAND_RESPONSES: Record<string, string> = {
-  link: '#付款:AI首席情报官wiseflow(经营_wiseflow)/Pro一年订阅4000算力亲友价/003'
-  // 可以根据需要添加更多指令
-};
+function loadCommandResponses(): Record<string, string> {
+  const raw = process.env.WORKTOOL_COMMAND_RESPONSES;
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    logger.warn('⚠️ WORKTOOL_COMMAND_RESPONSES 解析失败，请检查 JSON 格式');
+    return {};
+  }
+}
+
+const COMMAND_RESPONSES: Record<string, string> = loadCommandResponses();
 
 /**
  * 检查消息是否匹配指令集，如果匹配则返回对应的文案
@@ -278,56 +286,6 @@ router.post('/', async (ctx) => {
   // 优先检查是否是导演发送的指令
   if (isDirectorMessage(body)) {
     const messageText = body.spoken || body.rawSpoken || '';
-
-    // 检查 /网站注册账号： 指令
-    const onboardParams = parseOnboardCommand(messageText);
-    if (onboardParams) {
-      logger.info(`🎫 检测到导演发送的会员开通指令: ${JSON.stringify(onboardParams)}`);
-
-      // 立即响应 Webhook（必须在 3 秒内响应）
-      ctx.body = { code: 0, message: 'received' };
-      ctx.status = 200;
-
-      // 异步处理会员开通指令，不阻塞 Webhook 响应
-      setImmediate(async () => {
-        try {
-          // 确保 robotId 已获取
-          let finalRobotId = robotId;
-          if (!finalRobotId) {
-            const botManager = getBotManager();
-            const worktoolBots = botManager.getAllBots().filter((bot) => bot.type === 'worktool');
-            if (worktoolBots.length > 0) {
-              finalRobotId = worktoolBots[0].deviceGuid;
-              logger.debug(`从 Bot 配置获取 robotId: ${finalRobotId}`);
-            }
-          }
-
-          if (!finalRobotId) {
-            logger.warn('⚠️ 无法获取 robotId，无法处理会员开通指令');
-            return;
-          }
-
-          // 获取 botConfig
-          const botManager = getBotManager();
-          let botConfig: BotConfig | null = null;
-          if (finalRobotId) {
-            botConfig = botManager.getBotByGuid(finalRobotId);
-          }
-          if (!botConfig) {
-            const worktoolBots = botManager.getAllBots().filter((bot) => bot.type === 'worktool');
-            if (worktoolBots.length > 0) {
-              botConfig = worktoolBots[0];
-            }
-          }
-
-          await handleOnboardCommand(body, finalRobotId, onboardParams, botConfig || undefined);
-        } catch (error: any) {
-          logger.error('处理会员开通指令失败:', error);
-        }
-      });
-
-      return;
-    }
 
     // 检查 /a-station 指令（设置情报小站群公告）
     const stationAnnouncement = parseStationAnnouncementCommand(messageText);

@@ -86,12 +86,21 @@ export let needPermission = false;
 
 /**
  * 群ID映射配置（处理群ID偏移问题）
- * 格式：原始群ID -> 映射后的群ID
+ * 通过环境变量 ROOM_ID_MAPPING 配置，格式为 JSON 字符串
+ * 例如：ROOM_ID_MAPPING='{"10836417722719384":"10836417722719383"}'
  */
-export const roomIdMapping: Record<string, string> = {
-  '10836417722719384': '10836417722719383',
-  '10822065980611928': '10822065980611929'
-};
+function loadRoomIdMapping(): Record<string, string> {
+  const raw = process.env.ROOM_ID_MAPPING;
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    logger.warn('⚠️ ROOM_ID_MAPPING 解析失败，请检查 JSON 格式');
+    return {};
+  }
+}
+
+export const roomIdMapping: Record<string, string> = loadRoomIdMapping();
 
 /**
  * 初始化全局配置
@@ -193,11 +202,11 @@ export default {
   /** 机器人名称 */
   name: 'chatbot-new',
   platform: process.env.PLATFORM as Platform,
-  /** 默认导演ID */
-  defaultDirectorId: '7881301783996424',
-  /** API接口 */
+  /** 默认导演ID，通过环境变量 DEFAULT_DIRECTOR_ID 配置 */
+  defaultDirectorId: process.env.DEFAULT_DIRECTOR_ID || '',
+  /** API接口，通过环境变量 CALL_AGENT_URL / WORD_CORRECT_URL 配置 */
   Apis: {
-    callAgent: 'http://127.0.0.1:7777/dm',
-    wordCorrect: 'http://127.0.0.1:7777/word_correct'
+    callAgent: process.env.CALL_AGENT_URL || 'http://127.0.0.1:7777/dm',
+    wordCorrect: process.env.WORD_CORRECT_URL || 'http://127.0.0.1:7777/word_correct'
   } as const
 };
