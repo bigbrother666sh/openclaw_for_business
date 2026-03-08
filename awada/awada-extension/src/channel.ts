@@ -51,7 +51,8 @@ export const awadaPlugin: ChannelPlugin<ResolvedAwadaAccount> = {
       properties: {
         enabled: { type: "boolean" },
         redisUrl: { type: "string" },
-        lanes: { type: "array", items: { type: "string" } },
+        lane: { type: "string" },
+        platform: { type: "string" },
         consumerGroup: { type: "string" },
         consumerName: { type: "string" },
         dmPolicy: { type: "string", enum: ["open", "pairing", "allowlist"] },

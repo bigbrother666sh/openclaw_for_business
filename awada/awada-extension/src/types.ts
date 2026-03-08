@@ -8,7 +8,8 @@ export type ResolvedAwadaAccount = {
   enabled: boolean;
   configured: boolean;
   redisUrl?: string;
-  lanes: string[];
+  lane: string;
+  platform?: string;
   consumerGroup: string;
   consumerName: string;
   config: AwadaConfig;

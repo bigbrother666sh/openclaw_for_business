@@ -114,7 +114,8 @@ export const awadaOnboardingAdapter: ChannelOnboardingAdapter = {
         "You need:",
         "  1. A running awada-server that publishes events to Redis Streams",
         "  2. Redis URL (e.g. redis://localhost:6379 or redis://:pass@host:6379)",
-        "  3. Lane names to subscribe to (default: user)",
+        "  3. Lane to subscribe to (default: user)",
+        "  4. Platform identifier for proactive sends (e.g. worktool:mybot)",
       ].join("\n"),
       "Awada setup",
     );
@@ -155,27 +156,44 @@ export const awadaOnboardingAdapter: ChannelOnboardingAdapter = {
       await prompter.note(`Connection test failed: ${String(err)}`, "Awada connection test");
     }
 
-    // Lanes configuration
-    const currentLanes = awadaCfg?.lanes?.join(", ") ?? "user";
-    const lanesInput = String(
+    // Lane configuration (single lane per openclaw instance)
+    const currentLane = awadaCfg?.lane?.trim() ?? "user";
+    const laneInput = String(
       await prompter.text({
-        message: "Lanes to subscribe to (comma-separated)",
+        message: "Lane to subscribe to",
         placeholder: "user",
-        initialValue: currentLanes,
+        initialValue: currentLane,
       }),
     ).trim();
-    if (lanesInput) {
-      const lanes = lanesInput
-        .split(/[\n,;]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+    const resolvedLane = laneInput || "user";
+    next = {
+      ...next,
+      channels: {
+        ...next.channels,
+        awada: {
+          ...(next.channels?.awada as AwadaConfig),
+          lane: resolvedLane,
+        },
+      },
+    };
+
+    // Platform configuration (used for proactive sends)
+    const currentPlatform = awadaCfg?.platform?.trim() ?? "";
+    const platformInput = String(
+      await prompter.text({
+        message: "Platform identifier for proactive sends (e.g. worktool:mybot)",
+        placeholder: "worktool:mybot",
+        initialValue: currentPlatform,
+      }),
+    ).trim();
+    if (platformInput) {
       next = {
         ...next,
         channels: {
           ...next.channels,
           awada: {
             ...(next.channels?.awada as AwadaConfig),
-            lanes,
+            platform: platformInput,
           },
         },
       };

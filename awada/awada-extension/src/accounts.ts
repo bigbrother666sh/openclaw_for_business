@@ -2,7 +2,7 @@ import { DEFAULT_ACCOUNT_ID } from "openclaw/plugin-sdk/feishu";
 import type { ClawdbotConfig } from "openclaw/plugin-sdk/feishu";
 import type { AwadaConfig, ResolvedAwadaAccount } from "./types.js";
 
-const DEFAULT_LANES = ["user"];
+const DEFAULT_LANE = "user";
 const DEFAULT_CONSUMER_GROUP = "openclaw";
 const DEFAULT_CONSUMER_NAME = "openclaw_bot";
 
@@ -25,7 +25,8 @@ export function resolveAwadaAccount(params: {
     enabled,
     configured,
     redisUrl,
-    lanes: awadaCfg?.lanes ?? DEFAULT_LANES,
+    lane: awadaCfg?.lane?.trim() || DEFAULT_LANE,
+    platform: awadaCfg?.platform?.trim() || undefined,
     consumerGroup: awadaCfg?.consumerGroup ?? DEFAULT_CONSUMER_GROUP,
     consumerName: awadaCfg?.consumerName ?? DEFAULT_CONSUMER_NAME,
     config: awadaCfg ?? {},

@@ -17,7 +17,7 @@ describe("resolveAwadaAccount", () => {
     expect(account.enabled).toBe(true);
     expect(account.configured).toBe(false);
     expect(account.redisUrl).toBeUndefined();
-    expect(account.lanes).toEqual(["user"]);
+    expect(account.lane).toBe("user");
     expect(account.consumerGroup).toBe("openclaw");
     expect(account.consumerName).toBe("openclaw_bot");
   });
@@ -57,11 +57,11 @@ describe("resolveAwadaAccount", () => {
     expect(account.enabled).toBe(true);
   });
 
-  it("uses custom lanes when provided", () => {
+  it("uses custom lane when provided", () => {
     const account = resolveAwadaAccount({
-      cfg: makeConfig({ lanes: ["cs", "support"] }),
+      cfg: makeConfig({ lane: "cs" }),
     });
-    expect(account.lanes).toEqual(["cs", "support"]);
+    expect(account.lane).toBe("cs");
   });
 
   it("uses custom consumerGroup and consumerName", () => {

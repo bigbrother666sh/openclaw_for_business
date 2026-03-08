@@ -6,6 +6,7 @@ import { setAwadaRuntime } from "./src/runtime.js";
 export { monitorAwadaProvider } from "./src/monitor.js";
 export { probeAwada } from "./src/probe.js";
 export { sendTextToAwada, encodeAwadaTo, decodeAwadaTo } from "./src/send.js";
+export { publishTextToAwada } from "./src/publisher.js";
 export { awadaPlugin } from "./src/channel.js";
 
 const plugin = {

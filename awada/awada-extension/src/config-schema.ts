@@ -6,8 +6,10 @@ export const AwadaConfigSchema = z
     enabled: z.boolean().optional(),
     /** Redis connection URL, e.g. "redis://localhost:6379" or "redis://:pass@host:port/db" */
     redisUrl: z.string().optional(),
-    /** Lanes to subscribe to. Each lane maps to awada:events:inbound:<lane>. Default: ["user"] */
-    lanes: z.array(z.string()).optional(),
+    /** Lane to subscribe to. Maps to awada:events:inbound:<lane>. Default: "user" */
+    lane: z.string().optional(),
+    /** Platform identifier used when publishing proactive messages (e.g. "worktool:mybot"). */
+    platform: z.string().optional(),
     /** Redis consumer group name. Default: "openclaw" */
     consumerGroup: z.string().optional(),
     /** Redis consumer name (unique per process). Default: "openclaw_bot" */

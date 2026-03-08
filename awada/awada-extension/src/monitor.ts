@@ -232,31 +232,26 @@ export async function monitorAwadaProvider(opts: MonitorAwadaOpts = {}): Promise
     throw new Error("Awada channel not enabled or configured (missing redisUrl)");
   }
 
-  const { redisUrl, lanes, consumerGroup, consumerName, config: awadaCfg } = account;
+  const { redisUrl, lane, consumerGroup, consumerName, config: awadaCfg } = account;
   const blockMs = awadaCfg?.blockTimeMs ?? DEFAULT_BLOCK_MS;
   const batchSize = awadaCfg?.batchSize ?? DEFAULT_BATCH_SIZE;
   const maxRetries = awadaCfg?.maxRetries ?? DEFAULT_MAX_RETRIES;
 
   const resolvedAccountId = account.accountId;
 
-  // Monitor all lanes concurrently
-  const promises = lanes.map((lane) =>
-    monitorLane({
-      cfg,
-      redisUrl,
-      streamKey: `awada:events:inbound:${lane}`,
-      dlqKey: "awada:events:inbound:dlq",
-      group: consumerGroup ?? DEFAULT_CONSUMER_GROUP,
-      consumer: consumerName ?? DEFAULT_CONSUMER_NAME,
-      blockMs,
-      batchSize,
-      maxRetries,
-      minIdleMs: DEFAULT_MIN_IDLE_MS,
-      runtime,
-      abortSignal,
-      accountId: resolvedAccountId,
-    }),
-  );
-
-  await Promise.all(promises);
+  await monitorLane({
+    cfg,
+    redisUrl,
+    streamKey: `awada:events:inbound:${lane}`,
+    dlqKey: "awada:events:inbound:dlq",
+    group: consumerGroup ?? DEFAULT_CONSUMER_GROUP,
+    consumer: consumerName ?? DEFAULT_CONSUMER_NAME,
+    blockMs,
+    batchSize,
+    maxRetries,
+    minIdleMs: DEFAULT_MIN_IDLE_MS,
+    runtime,
+    abortSignal,
+    accountId: resolvedAccountId,
+  });
 }

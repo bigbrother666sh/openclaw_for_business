@@ -56,7 +56,7 @@ npm install
 在 `awada/awada-server/` 目录下创建 `.env` 文件：
 
 ```bash
-# ── 服务器 ─────────────────────���────────────────────
+# ── 服务器 ──────────────────────────────────────────
 PORT=8088
 
 # ── Redis ────────────────────────────────────────────
@@ -148,7 +148,8 @@ cd /path/to/openclaw
     "awada": {
       "enabled": true,
       "redisUrl": "redis://:YOUR_REDIS_PASSWORD@YOUR_SERVER_IP:6379/0",
-      "lanes": ["user"]
+      "lane": "user",
+      "platform": "worktool:mybot"
     }
   }
 }
@@ -160,7 +161,8 @@ cd /path/to/openclaw
 |------|------|--------|------|
 | `enabled` | boolean | `true` | 是否启用该 channel |
 | `redisUrl` | string | — | Redis 连接 URL，**必填** |
-| `lanes` | string[] | `["user"]` | 订阅的 lane 列表 |
+| `lane` | string | `"user"` | 订阅的 lane（每个 openclaw 实例只绑定一个 lane） |
+| `platform` | string | — | 平台标识（如 `worktool:mybot`），主动发消息时必填 |
 | `consumerGroup` | string | `"openclaw"` | Redis Consumer Group 名称 |
 | `consumerName` | string | `"openclaw_bot"` | 消费者名称（多实例时需唯一） |
 | `dmPolicy` | string | `"open"` | 消息接入策略：`open`/`pairing`/`allowlist` |
@@ -168,6 +170,8 @@ cd /path/to/openclaw
 | `maxRetries` | number | `5` | 消息处理失败最大重试次数 |
 | `blockTimeMs` | number | `5000` | Redis XREADGROUP 阻塞超时（毫秒） |
 | `batchSize` | number | `10` | 每批拉取消息数量 |
+
+> **设计约定：** awada-server 的 Bot 可监听多个 lane（`BOT_N_LANES=user,admin`），但 awada-extension 每个实例只绑定一个 lane，通过 lane 实现流量隔离与路由。`platform` 值须与 awada-server 端对应 Bot 的 `BOT_N_PLATFORM` 保持一致。
 
 **Redis URL 格式：**
 ```
@@ -183,18 +187,17 @@ redis://USERNAME:PASSWORD@HOST:PORT/DB   # 有用户名和密码
     "awada": {
       "enabled": true,
       "redisUrl": "redis://:MyRedisPass@121.4.44.143:7601/0",
-      "lanes": ["user"],
+      "lane": "user",
+      "platform": "worktool:mybot",
       "dmPolicy": "open"
     }
   }
 }
 ```
 
-> **注意：** `platform` 是 awada-server 端的概念（写在 `BOT_N_PLATFORM` 环境变量中），awada-extension 无需配置。
-
 ### 通过向导配置
 
-openclaw 支持交互式配置向导，启动后选择 "Configure channel → Awada"，按提示输入 Redis URL 和 lane 即可。
+openclaw 支持交互式配置向导，启动后选择 "Configure channel → Awada"，按提示输入 Redis URL、lane 和 platform 即可。
 
 ---
 
@@ -209,5 +212,5 @@ openclaw 支持交互式配置向导，启动后选择 "Configure channel → Aw
 ## 四、多 Bot / 多 openclaw 实例
 
 - **多 bot**：在 `.env` 中增加 `BOT_2_*`、`BOT_3_*` 等配置，每个 bot 分配不同 lane
-- **多 openclaw 实例**：不同实例订阅不同 lane（`lanes` 配置不同），或使用不同 `consumerGroup`
+- **多 openclaw 实例**：不同实例订阅不同 lane（`lane` 配置不同），或使用不同 `consumerGroup`
 - **同一 Redis 多租户**：可通过不同 `db` 编号隔离（`redisUrl` 末尾 `/1`、`/2`…）
