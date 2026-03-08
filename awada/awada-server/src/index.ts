@@ -1,5 +1,5 @@
 /**
- * chatbot-new 入口文件
+ * awada-server 主入口文件
  * 基于 qiweapi 的微信智能机器人
  *
  * qiweapi 文档: https://doc.qiweapi.com/
@@ -118,7 +118,7 @@ const displayQrcode = async (base64Data: string) => {
 
 /** 启动机器人（登录逻辑已注释，使用手动创建的 GUID） */
 const startBot = async () => {
-  botLogger.info('🤖🤖🤖 chatbot-new 启动中... 🤖🤖🤖');
+  botLogger.info('🤖🤖🤖 awada-server 启动中... 🤖🤖🤖');
 
   // 获取所有 Bot 配置
   const botManager = getBotManager();
@@ -566,13 +566,13 @@ const main = async () => {
               logger.error(`❌ 回调地址未配置，请在 .env 文件中配置 WORKTOOL_CALLBACK_URL 或 CALLBACK_BASE_URL`);
               return { botId: botConfig.botId, success: false, error: '回调地址未配置' };
             }
-            
+
             // 如果回调未开启，则自动设置回调地址
             if (infoResponse.data.openCallback === 0) {
               logger.info(`📡 检测到回调未开启，正在设置回调地址: ${callbackUrl}`);
               // 等待一小段时间，确保 HTTP 服务完全启动
-              await new Promise(resolve => setTimeout(resolve, 1000));
-              
+              await new Promise((resolve) => setTimeout(resolve, 1000));
+
               const callbackResponse = await setCallback(robotId, {
                 openCallback: 1,
                 replyAll: 1, // 根据文档示例，replyAll 为数字
@@ -617,18 +617,15 @@ const main = async () => {
 
     // 启动 Outbound 消费者（监听 Bot 发送的消息）
     // 从环境变量读取 lanes，格式：OUTBOUND_LANES=user,admin,linfen
-    const lanesEnv = process.env.OUTBOUND_LANES || 'user,admin,linfen';
-    const lanes = lanesEnv
+    const lanesEnv = process.env.OUTBOUND_LANES || 'user,admin';
+    const lanes: Lane[] = lanesEnv
       .split(',')
       .map((lane) => lane.trim())
-      .filter((lane): lane is Lane => {
-        const validLanes: Lane[] = ['user', 'admin', 'test', 'linfen', 'wiseflow'];
-        return validLanes.includes(lane as Lane);
-      });
+      .filter(Boolean);
 
     if (lanes.length === 0) {
-      logger.warn('⚠️ 没有有效的 lanes，使用默认值: user,admin,linfen');
-      lanes.push('user', 'admin', 'linfen');
+      logger.warn('⚠️ 没有有效的 lanes，使用默认值: user,admin');
+      lanes.push('user', 'admin');
     }
 
     logger.info(`📡 Outbound 消费者将监听 lanes: ${lanes.join(', ')}`);
@@ -638,7 +635,7 @@ const main = async () => {
     // 启动机器人（自动获取二维码）
     await startBot();
 
-    logger.info('✅ chatbot-new 启动完成');
+    logger.info('✅ awada-server 启动完成');
   } catch (error) {
     logger.error('❌ 启动失败:', error);
     process.exit(1);

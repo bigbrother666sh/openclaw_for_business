@@ -199,14 +199,9 @@ export const mapRoomId = (roomId: string | undefined | null): string => {
  * 常量配置
  */
 export default {
-  /** 机器人名称 */
-  name: 'chatbot-new',
+  /** 应用名称，通过环境变量 APP_NAME 配置 */
+  name: process.env.APP_NAME || 'awada-server',
   platform: process.env.PLATFORM as Platform,
   /** 默认导演ID，通过环境变量 DEFAULT_DIRECTOR_ID 配置 */
-  defaultDirectorId: process.env.DEFAULT_DIRECTOR_ID || '',
-  /** API接口，通过环境变量 CALL_AGENT_URL / WORD_CORRECT_URL 配置 */
-  Apis: {
-    callAgent: process.env.CALL_AGENT_URL || 'http://127.0.0.1:7777/dm',
-    wordCorrect: process.env.WORD_CORRECT_URL || 'http://127.0.0.1:7777/word_correct'
-  } as const
+  defaultDirectorId: process.env.DEFAULT_DIRECTOR_ID || ''
 };

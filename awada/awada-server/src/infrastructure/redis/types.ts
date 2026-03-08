@@ -5,9 +5,9 @@
 
 // ============ 基础类型 ============
 
-export type Lane = 'user' | 'admin' | 'test' | 'linfen' | 'wiseflow' | 'marketing_1' | 'marketing_2' | 'marketing_3';
+export type Lane = string;
 export type ActorType = 'end_user' | 'admin' | 'system';
-export type Platform = 'wechat' | 'telegram' | 'web' | 'feishu' | 'douyin' | 'test' | 'qiwe:linxiaozhu' | 'qiwe:linfen' | 'qiwe:wiseflow' | 'worktool:wiseflow';
+export type Platform = string;
 
 // Inbound 事件类型
 export type InboundEventType = 'MESSAGE_NEW' | 'PAYMENT_SUCCESS' | 'BUTTON_CLICK';
@@ -89,7 +89,7 @@ export interface OutboundTarget {
   channel_id: string;
   reply_token?: string;
   conversation_id?: string;
-  /** 
+  /**
    * action_ask: [int, ["string", ...]]
    * 用于群聊消息中@特定用户
    * 第一个元素为 int（当前为 0），第二个元素为用户列表

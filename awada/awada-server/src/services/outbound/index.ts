@@ -46,35 +46,35 @@ function getConversationMgr() {
  * 从 file_url 提取文件名
  */
 function extractFilenameFromUrl(fileUrl: string): string {
-      let filename = 'file';
-      try {
+  let filename = 'file';
+  try {
     const url = new URL(fileUrl);
-        const pathname = url.pathname;
-        // 获取路径的最后一部分作为文件名
-        const urlFilename = pathname.split('/').pop() || 'file';
-        // 解码文件名（处理 URL 编码）
-        filename = decodeURIComponent(urlFilename);
-        // 如果解码后仍然是编码格式，尝试再次解码
-        if (filename.includes('%')) {
-          filename = decodeURIComponent(filename);
-        }
-        // 如果还是没有有效的文件名，使用默认值
-        if (!filename || filename === '/' || filename === 'file') {
-          // 尝试从 URL 的查询参数或其他部分获取文件名
-          const urlParams = new URLSearchParams(url.search);
-          const paramFilename = urlParams.get('filename') || urlParams.get('name');
-          if (paramFilename) {
-            filename = decodeURIComponent(paramFilename);
-          } else {
-            // 使用文件扩展名推断文件名
-            const ext = path.extname(pathname);
-            filename = `file${ext || ''}`;
-          }
-        }
-      } catch (e) {
-        // 如果 URL 解析失败，使用默认文件名
+    const pathname = url.pathname;
+    // 获取路径的最后一部分作为文件名
+    const urlFilename = pathname.split('/').pop() || 'file';
+    // 解码文件名（处理 URL 编码）
+    filename = decodeURIComponent(urlFilename);
+    // 如果解码后仍然是编码格式，尝试再次解码
+    if (filename.includes('%')) {
+      filename = decodeURIComponent(filename);
+    }
+    // 如果还是没有有效的文件名，使用默认值
+    if (!filename || filename === '/' || filename === 'file') {
+      // 尝试从 URL 的查询参数或其他部分获取文件名
+      const urlParams = new URLSearchParams(url.search);
+      const paramFilename = urlParams.get('filename') || urlParams.get('name');
+      if (paramFilename) {
+        filename = decodeURIComponent(paramFilename);
+      } else {
+        // 使用文件扩展名推断文件名
+        const ext = path.extname(pathname);
+        filename = `file${ext || ''}`;
+      }
+    }
+  } catch (e) {
+    // 如果 URL 解析失败，使用默认文件名
     logger.warn(`⚠️ 无法从 URL 提取文件名: ${fileUrl}`, e);
-        filename = 'file';
+    filename = 'file';
   }
   return filename;
 }
@@ -348,13 +348,7 @@ async function handlePayload(payload: Payload, toId: string, channelId: string, 
  * @param botConfig Bot配置
  * @param actionAsk action_ask 字段，格式为 [int, ["string", ...]]，用于群聊@用户
  */
-async function handleWorkToolPayload(
-  payload: Payload,
-  toId: string,
-  channelId: string,
-  botConfig: BotConfig,
-  actionAsk?: [number, string[]]
-): Promise<void> {
+async function handleWorkToolPayload(payload: Payload, toId: string, channelId: string, botConfig: BotConfig, actionAsk?: [number, string[]]): Promise<void> {
   if (!Array.isArray(payload) || payload.length === 0) {
     throw new Error('Payload 必须是非空数组');
   }
@@ -420,7 +414,7 @@ async function handleWorkToolPayload(
 
         case 'file': {
           const fileObj = obj as FileObject;
-          
+
           // 检查是否是微盘文件（有 file_id）
           if (fileObj.file_id) {
             // 使用推送微盘文件 API (type=209)
@@ -479,7 +473,7 @@ async function handleWorkToolPayload(
   // 批量发送（单次最多100条，如果超过需要分批）
   const MAX_BATCH_SIZE = 100;
   const batches: BatchSendItem[][] = [];
-  
+
   for (let i = 0; i < batchItems.length; i += MAX_BATCH_SIZE) {
     batches.push(batchItems.slice(i, i + MAX_BATCH_SIZE));
   }
@@ -488,7 +482,7 @@ async function handleWorkToolPayload(
 
   for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
     const batch = batches[batchIndex];
-    
+
     try {
       const result = await batchSendMessages(robotId, {
         list: batch
@@ -501,7 +495,7 @@ async function handleWorkToolPayload(
       const batchStart = batchIndex * MAX_BATCH_SIZE + 1;
       const batchEnd = Math.min((batchIndex + 1) * MAX_BATCH_SIZE, batchItems.length);
       logger.sent(`📤 WorkTool 批量发送成功 [${batchStart}-${batchEnd}/${batchItems.length}] 到 ${titleList.join(', ')}`);
-      
+
       if (result.data) {
         logger.debug(`   消息ID: ${result.data}`);
       }
@@ -528,7 +522,7 @@ async function dispatchToPlatform(event: OutboundEvent): Promise<void> {
   // platform 和 bot_id 一一对应
   const botManager = getBotManager();
   let botConfig = botManager.getBotByPlatform(platform);
-  
+
   // 如果还是找不到，使用第一个可用的 bot（向后兼容）
   if (!botConfig) {
     const allBots = botManager.getAllBots();
@@ -554,33 +548,13 @@ async function dispatchToPlatform(event: OutboundEvent): Promise<void> {
   // 如果是群消息，使用 channel_id；如果是私聊，使用 user_id_external
   const toId = channel_id && channel_id !== '0' ? channel_id : user_id_external;
 
-  switch (platform) {
-    case 'qiwe:linxiaozhu':
-    case 'qiwe:linfen':
-    case 'qiwe:wiseflow':
-      await handlePayload(payload, toId, channel_id, botConfig);
-      break;
-
-    case 'worktool:wiseflow':
-      await handleWorkToolPayload(payload, toId, channel_id, botConfig);
-      break;
-
-    case 'telegram':
-      // TODO: 实现 Telegram 发送逻辑
-      logger.warn(`⚠️ Telegram 平台暂未实现`);
-      break;
-
-    case 'web':
-      // TODO: 实现 WebSocket 发送逻辑
-      logger.warn(`⚠️ Web 平台暂未实现`);
-      break;
-
-    case 'test':
-      // TODO: 实现 Test 发送逻辑
-      logger.warn(`⚠️ Test 平台暂未实现`);
-      break;
-    default:
-      throw new Error(`未知的平台: ${platform}`);
+  // 根据 Bot 类型分发消息
+  if (botConfig.type === 'qiwe') {
+    await handlePayload(payload, toId, channel_id, botConfig);
+  } else if (botConfig.type === 'worktool') {
+    await handleWorkToolPayload(payload, toId, channel_id, botConfig);
+  } else {
+    throw new Error(`未知的 Bot 类型: ${(botConfig as any).type}，platform: ${platform}`);
   }
 }
 
@@ -627,9 +601,7 @@ export async function startOutboundConsumers(lanes: Lane[] = ['user', 'admin', '
           await dispatchToPlatform(event);
 
           // 高亮显示：消息已发送
-          const toId = event.target.channel_id && event.target.channel_id !== '0' 
-            ? `群[${event.target.channel_id}]` 
-            : event.target.user_id_external;
+          const toId = event.target.channel_id && event.target.channel_id !== '0' ? `群[${event.target.channel_id}]` : event.target.user_id_external;
           logger.sent(`📤 消息已发送 - platform=${event.target.platform}, toId=${toId}`);
         } catch (error: any) {
           // 处理失败，移除幂等标记以便重试
@@ -661,4 +633,3 @@ export async function stopOutboundConsumers(): Promise<void> {
   consumers.length = 0; // 清空数组
   logger.info('✅ 所有消费者已停止');
 }
-

@@ -147,7 +147,7 @@ export async function onFriendApply(callback: FriendApplyCallback, botConfig: Bo
         console.log(`[Friendship] ✅ 好友申请已同意: ${contactNickname}`);
 
         // 发送欢迎语
-        const welcomeMessage = staticConfig?.person_speech?.welcome || '欢迎使用数字社工助理';
+        const welcomeMessage = staticConfig?.person_speech?.welcome || '欢迎！';
         await sendTextMsg(contactIdStr, welcomeMessage, guid, token);
 
         console.log(`[Friendship] ✅ 已发送欢迎语给: ${contactNickname}`);

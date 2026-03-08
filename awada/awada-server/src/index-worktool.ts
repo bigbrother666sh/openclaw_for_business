@@ -1,6 +1,6 @@
 /**
  * WorkTool 启动入口
- * 只启动 WorkTool 类型的 Bot（wiseflow）
+ * 只启动 WorkTool 类型的 Bot
  */
 
 require('dotenv').config();
@@ -21,11 +21,11 @@ const startWorkToolBot = async () => {
   logger.info('🤖 WorkTool Bot 启动中...');
 
   // 只加载 WorkTool 类型的 Bot
-  const worktoolBots = BOT_CONFIGS.filter(bot => bot.type === 'worktool');
+  const worktoolBots = BOT_CONFIGS.filter((bot) => bot.type === 'worktool');
 
   if (worktoolBots.length === 0) {
     logger.warn('⚠️ 警告: 未配置任何 WorkTool Bot');
-    logger.warn('请在 .env 文件中配置 WISEFLOW_BOT_ID');
+    logger.warn('请在 .env 文件中配置 BOT_1_TYPE=worktool、BOT_1_ID、BOT_1_DEVICE_GUID 等环境变量');
     return;
   }
 
@@ -43,24 +43,24 @@ const startWorkToolBot = async () => {
   const botStatusPromises = worktoolBots.map(async (botConfig) => {
     try {
       const robotId = botConfig.deviceGuid;
-      
+
       // 获取机器人信息
       logger.info(`正在获取 Bot ${botConfig.botId} (robotId: ${robotId}) 的信息...`);
       const infoResponse = await getRobotInfo(robotId);
-      
+
       if (infoResponse.code === 200 && infoResponse.data) {
         logger.info(`✅ Bot ${botConfig.botId} 信息:`);
         logger.info(`   - 名称: ${infoResponse.data.name}`);
         logger.info(`   - 机器人ID: ${infoResponse.data.robotId}`);
         logger.info(`   - 机器人类型: ${infoResponse.data.robotType === 0 ? '企业微信' : '微信'}`);
         logger.info(`   - 回调状态: ${infoResponse.data.openCallback === 1 ? '已开启' : '未开启'}`);
-        
+
         // 检查在线状态
         const onlineResponse = await checkRobotOnline(robotId);
         if (onlineResponse.code === 200) {
           logger.info(`✅ Bot ${botConfig.botId} 在线状态检查完成`);
         }
-        
+
         return { botId: botConfig.botId, success: true };
       } else {
         logger.warn(`⚠️ Bot ${botConfig.botId} 获取信息失败: ${infoResponse.message}`);

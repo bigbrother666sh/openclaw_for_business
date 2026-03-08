@@ -9,7 +9,7 @@
  */
 
 import Router from 'koa-router';
-import { WorkToolCallbackMessage, WorkToolCallbackResponse } from '@/services/worktool/types';
+import { WorkToolCallbackMessage } from '@/services/worktool/types';
 import { createLogger } from '../utils/logger';
 import { getBotManager } from '../services/bot/manager';
 import { BotConfig } from '@/config/bots';
@@ -20,8 +20,6 @@ import { RobotInfo } from '@/services/worktool/types';
 import * as fs from 'fs';
 import * as path from 'path';
 import { v4 as uuidv4 } from 'uuid';
-import { parseAnnouncementCommand, handleAnnouncementCommand, isDirectorMessage } from '@/services/director';
-import { parseCreateGroupCommand, handleCreateGroupCommand, parseStationAnnouncementCommand, handleStationAnnouncementCommand } from '@/services/director/group';
 
 const logger = createLogger('WorkTool-Webhook');
 
@@ -280,124 +278,11 @@ router.post('/', async (ctx) => {
 
   logger.received('📥 收到 WorkTool 回调');
   logger.debug(`robotId: ${robotId || '未提供'}`);
-  //   做适当截断
   logger.debug('原始数据:', JSON.stringify(body, null, 2).substring(0, 1000));
 
-  // 优先检查是否是导演发送的指令
-  if (isDirectorMessage(body)) {
-    const messageText = body.spoken || body.rawSpoken || '';
-
-    // 检查 /a-station 指令（设置情报小站群公告）
-    const stationAnnouncement = parseStationAnnouncementCommand(messageText);
-    if (stationAnnouncement) {
-      logger.info(`📢 检测到导演发送的设置情报小站群公告指令`);
-
-      // 立即响应 Webhook（必须在 3 秒内响应）
-      ctx.body = { code: 0, message: 'received' };
-      ctx.status = 200;
-
-      // 异步处理设置情报小站群公告指令，不阻塞 Webhook 响应
-      setImmediate(async () => {
-        try {
-          // 确保 robotId 已获取
-          let finalRobotId = robotId;
-          if (!finalRobotId) {
-            const botManager = getBotManager();
-            const worktoolBots = botManager.getAllBots().filter((bot) => bot.type === 'worktool');
-            if (worktoolBots.length > 0) {
-              finalRobotId = worktoolBots[0].deviceGuid;
-              logger.debug(`从 Bot 配置获取 robotId: ${finalRobotId}`);
-            }
-          }
-
-          if (!finalRobotId) {
-            logger.warn('⚠️ 无法获取 robotId，无法处理设置情报小站群公告指令');
-            return;
-          }
-
-          await handleStationAnnouncementCommand(body, finalRobotId, stationAnnouncement);
-        } catch (error: any) {
-          logger.error('处理设置情报小站群公告指令失败:', error);
-        }
-      });
-
-      return;
-    }
-
-    // 检查 /a 指令（设置客服群公告）
-    const announcement = parseAnnouncementCommand(messageText);
-    if (announcement) {
-      logger.info(`📢 检测到导演发送的设置客服群公告指令`);
-
-      // 立即响应 Webhook（必须在 3 秒内响应）
-      ctx.body = { code: 0, message: 'received' };
-      ctx.status = 200;
-
-      // 异步处理设置群公告指令，不阻塞 Webhook 响应
-      setImmediate(async () => {
-        try {
-          // 确保 robotId 已获取
-          let finalRobotId = robotId;
-          if (!finalRobotId) {
-            const botManager = getBotManager();
-            const worktoolBots = botManager.getAllBots().filter((bot) => bot.type === 'worktool');
-            if (worktoolBots.length > 0) {
-              finalRobotId = worktoolBots[0].deviceGuid;
-              logger.debug(`从 Bot 配置获取 robotId: ${finalRobotId}`);
-            }
-          }
-
-          if (!finalRobotId) {
-            logger.warn('⚠️ 无法获取 robotId，无法处理设置群公告指令');
-            return;
-          }
-
-          await handleAnnouncementCommand(body, finalRobotId, announcement);
-        } catch (error: any) {
-          logger.error('处理设置群公告指令失败:', error);
-        }
-      });
-
-      return;
-    }
-
-    // 检查 /cg 指令（创建分组）
-    const isCreateGroupCommand = parseCreateGroupCommand(messageText);
-    if (isCreateGroupCommand) {
-      logger.info(`📦 检测到导演发送的创建分组指令`);
-
-      // 立即响应 Webhook（必须在 3 秒内响应）
-      ctx.body = { code: 0, message: 'received' };
-      ctx.status = 200;
-
-      // 异步处理创建分组指令，不阻塞 Webhook 响应
-      setImmediate(async () => {
-        try {
-          // 确保 robotId 已获取
-          let finalRobotId = robotId;
-          if (!finalRobotId) {
-            const botManager = getBotManager();
-            const worktoolBots = botManager.getAllBots().filter((bot) => bot.type === 'worktool');
-            if (worktoolBots.length > 0) {
-              finalRobotId = worktoolBots[0].deviceGuid;
-              logger.debug(`从 Bot 配置获取 robotId: ${finalRobotId}`);
-            }
-          }
-
-          if (!finalRobotId) {
-            logger.warn('⚠️ 无法获取 robotId，无法处理创建分组指令');
-            return;
-          }
-
-          await handleCreateGroupCommand(body, finalRobotId);
-        } catch (error: any) {
-          logger.error('处理创建分组指令失败:', error);
-        }
-      });
-
-      return;
-    }
-  }
+  // 立即响应（必须在 3 秒内响应）
+  ctx.body = { code: 0, message: 'received' };
+  ctx.status = 200;
 
   // 检查是否匹配指令集，如果匹配则返回特定文案
   const commandResponse = getCommandResponse(body);
@@ -410,22 +295,6 @@ router.post('/', async (ctx) => {
     const roomTypeName = body.roomType === 1 ? '外部群' : body.roomType === 2 ? '外部联系人' : body.roomType === 3 ? '内部群' : body.roomType === 4 ? '内部联系人' : `未知(${body.roomType})`;
     logger.info(`✅ 匹配到指令，直接返回响应文案 (房间类型: ${roomTypeName}): ${responseText.substring(0, 50)}...`);
   }
-
-  // 立即响应（必须在 3 秒内响应）
-  // 如果匹配到指令，返回对应文案；否则返回空字符串，后续通过 outbound 发送消息
-  //   const defaultResponse: WorkToolCallbackResponse = {
-  //     code: 0,
-  //     message: 'received',
-  //     data: {
-  //       type: 5000,
-  //       info: {
-  //         text: responseText
-  //       }
-  //     }
-  //   };
-
-  //   ctx.body = defaultResponse;
-  //   ctx.status = 200;
 
   // 如果匹配到指令，需要向用户发送指定消息
   if (isCommandMatched) {
