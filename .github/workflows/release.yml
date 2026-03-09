@@ -10,7 +10,6 @@ permissions:
 
 env:
   NODE_VERSION: '20'
-  PNPM_VERSION: '10'
   OPENCLAW_REPO: 'https://github.com/openclaw/openclaw'
 
 jobs:
@@ -73,18 +72,18 @@ jobs:
         with:
           ref: main
 
+      - name: Clone openclaw upstream
+        run: git clone ${{ env.OPENCLAW_REPO }} openclaw
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
-          version: ${{ env.PNPM_VERSION }}
+          package_json_file: openclaw/package.json
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
-
-      - name: Clone openclaw upstream
-        run: git clone ${{ env.OPENCLAW_REPO }} openclaw
 
       - name: Install openclaw dependencies
         working-directory: openclaw
