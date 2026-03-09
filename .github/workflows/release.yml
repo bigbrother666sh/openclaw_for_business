@@ -157,29 +157,24 @@ jobs:
         timeout-minutes: 10
         run: |
           VERSION="${{ needs.bump-version.outputs.version }}"
-          ARCHIVE="openclaw-for-business-${VERSION}.zip"
+          ARCHIVE="openclaw-for-business-${VERSION}.tar.gz"
 
-          # 准备打包目录
           STAGE=$(mktemp -d)
           DEST="${STAGE}/openclaw_for_business"
-          mkdir -p "$DEST"
 
-          # 拷贝项目文件（排除 .git、addons 子目录内容和 openclaw 克隆目录）
-          rsync -a \
-            --exclude='.git/' \
-            --exclude='addons/*' \
-            --exclude='openclaw/' \
-            . "$DEST/"
+          # cp -al：创建硬链接树（极快，几乎不占额外磁盘空间）
+          cp -al . "$DEST"
 
-          # 拷贝 openclaw 上游代码（排除 .git 历史，保留 node_modules 和构建产物供用户直接使用）
-          rsync -a --exclude='.git/' \
-            openclaw/ "$DEST/openclaw/"
+          # 删除不需要打包的内容
+          rm -rf "$DEST/.git" "$DEST/openclaw/.git"
+          find "$DEST/addons" -mindepth 1 -maxdepth 1 -exec rm -rf {} + 2>/dev/null || true
 
-          # 打包（-q 静默模式，减少日志输出）
+          # tar 原生识别硬链接，相同 inode 只存一份，archive 体积远小于 zip
           cd "$STAGE"
-          zip -qr "${GITHUB_WORKSPACE}/${ARCHIVE}" openclaw_for_business/
+          tar czf "${GITHUB_WORKSPACE}/${ARCHIVE}" openclaw_for_business/
 
           echo "archive=${ARCHIVE}" >> $GITHUB_OUTPUT
+          ls -lh "${GITHUB_WORKSPACE}/${ARCHIVE}"
           echo "Archive created: ${ARCHIVE}"
 
       - name: Create GitHub Release
@@ -188,4 +183,4 @@ jobs:
           tag_name: ${{ needs.bump-version.outputs.version }}
           name: "Release ${{ needs.bump-version.outputs.version }}"
           generate_release_notes: true
-          files: "*.zip"
+          files: "*.tar.gz"
