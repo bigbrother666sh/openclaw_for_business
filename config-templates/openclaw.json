@@ -201,15 +201,9 @@
     }
   },
   "plugins": {
-    "load": {
-      "paths": ["openclaw/extensions/feishu", "awada/awada-extension"]
-    },
     "entries": {
       "feishu": {
         "enabled": true
-      },
-      "awada": {
-        "enabled": false
       }
     }
   }
