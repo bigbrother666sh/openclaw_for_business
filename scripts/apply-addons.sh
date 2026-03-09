@@ -40,21 +40,6 @@ cd "$OPENCLAW_DIR"
 git reset --hard HEAD 2>/dev/null || true
 cd "$PROJECT_ROOT"
 
-# ─── 从 clawhub 安装内置 skills ──────────────────────────────────
-# 通过 npx clawhub@latest install <slug> 从 clawhub 拉取，而非在代码仓中存储
-CLAWHUB_SKILL_DIR="$OPENCLAW_DIR/skills"
-CLAWHUB_SKILLS=(
-  "self-improving"
-)
-for slug in "${CLAWHUB_SKILLS[@]}"; do
-  echo "📥 Installing clawhub skill: $slug"
-  if npx --yes clawhub@latest install "$slug" --dir "$CLAWHUB_SKILL_DIR" --no-input 2>/dev/null; then
-    echo "   ✅ $slug"
-  else
-    echo "   ⚠️  Failed to install $slug from clawhub (network unavailable?), skipping"
-  fi
-done
-
 # ─── 同步 skills 禁用配置（从 config-templates 到运行配置）──────
 if [ -f "$CONFIG_PATH" ] && [ -f "$PROJECT_ROOT/config-templates/openclaw.json" ]; then
   node -e "

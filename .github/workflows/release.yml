@@ -14,73 +14,11 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
-  # Job 1: 端到端完整测试（ubuntu-24.04 & macos-latest）
-  #         测试通过后才执行版本递增和发布
-  # ──────────────────────────────────────────────────────────────────────────
-  test:
-    if: github.event.pull_request.merged == true
-    strategy:
-      matrix:
-        os: [ubuntu-24.04, macos-latest]
-      fail-fast: false
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: main
-
-      - name: Clone openclaw upstream
-        run: git clone ${{ env.OPENCLAW_REPO }} openclaw
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: openclaw/package.json
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ env.NODE_VERSION }}
-
-      - name: Install openclaw dependencies
-        working-directory: openclaw
-        run: pnpm install
-
-      - name: Build openclaw
-        working-directory: openclaw
-        run: pnpm build
-
-      - name: Setup config from template
-        run: |
-          mkdir -p ~/.openclaw
-          cp config-templates/openclaw.json ~/.openclaw/openclaw.json
-
-      # systemd user session 支持（Linux 需要 XDG_RUNTIME_DIR）
-      - name: Enable systemd user session
-        if: runner.os == 'Linux'
-        run: |
-          sudo loginctl enable-linger $USER || true
-          XDG_DIR="/run/user/$(id -u)"
-          sudo mkdir -p "$XDG_DIR"
-          sudo chown $USER "$XDG_DIR"
-          echo "XDG_RUNTIME_DIR=$XDG_DIR" >> $GITHUB_ENV
-
-      # Run setup-crew.sh + apply-addons.sh separately.
-      # We intentionally skip the `pnpm openclaw daemon install` step that
-      # reinstall-daemon.sh would also execute: daemon installation requires
-      # a real user session (systemd on Linux, launchd on macOS) and cannot
-      # be meaningfully tested in a headless CI runner.
-      - name: Run setup-crew.sh
-        run: bash scripts/setup-crew.sh
-
-      - name: Run apply-addons.sh
-        run: bash scripts/apply-addons.sh
-
-  # ──────────────────────────────────────────────────────────────────────────
-  # Job 2: 测试通过后，按 PR 标签自动递增版本号并提交
+  # Job 1: 按 PR 标签自动递增版本号并提交
+  #         测试已在 ci.yml 中通过，此处不再重复
   # ──────────────────────────────────────────────────────────────────────────
   bump-version:
-    needs: test
+    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.bump.outputs.version }}
@@ -121,7 +59,7 @@ jobs:
           git push
 
   # ──────────────────────────────────────────────────────────────────────────
-  # Job 3: 构建打包并发布 Release
+  # Job 2: 构建打包并发布 Release
   # ──────────────────────────────────────────────────────────────────────────
   release:
     needs: bump-version
