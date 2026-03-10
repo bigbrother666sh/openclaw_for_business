@@ -43,11 +43,17 @@
 ```
 openclaw_for_business/
 ├── openclaw/              # 上游仓库（git clone，禁止直接修改）
-├── crew/                  # 多 Agent 系统（内置核心）
+├── crews/                 # Crew 模板库 + 内置 Crew（Template → Instance 模型）
 │   ├── shared/            # 共享协议（RULES.md、TEMPLATES.md）
-│   ├── workspaces/        # Agent workspace 模板（main + hrbp）
-│   │   └── hrbp/skills/   # HRBP 专属技能（recruit/modify/remove/list/usage）
-│   └── role-templates/    # 角色参考模板（供 HRBP 招聘时使用）
+│   ├── _template/         # 空白脚手架（创建新模板的起点）
+│   ├── index.md           # 模板注册表（HRBP 维护）
+│   ├── main/              # [built-in] Main Agent（路由调度器）
+│   ├── hrbp/              # [built-in] HRBP（Crew 生命周期管理）
+│   │   └── skills/        # HRBP 专属技能（recruit/modify/remove/list/usage）
+│   ├── it-engineer/       # [built-in] IT Engineer（系统运维）
+│   ├── customer-service/  # [official] 客服模板
+│   ├── developer/         # [official] 开发者模板
+│   └── ...                # 更多官方模板
 ├── skills/                # 全局共享技能（所有 Agent 可见）
 ├── addons/                # 第三方 addon 安装目录（不跟踪子目录）
 ├── config-templates/      # 配置模板（开箱即用的最佳实践）
@@ -140,10 +146,10 @@ cd openclaw && pnpm build && cd ..
 # Agent 管理
 ./scripts/setup-crew.sh               # 手动安装/重装 Agent 系统
 ./scripts/setup-crew.sh --force       # 覆盖已有 workspace
-./scripts/setup-crew.sh --builtin-skills hrbp:browser-guide
+./scripts/setup-crew.sh --denied-skills hrbp:slack,github
 ```
 
-Agent 生命周期（新增/调岗/移除/消耗统计）由 HRBP skill 执行，内部脚本位于 `crew/workspaces/hrbp/skills/*/scripts/`，不作为人类用户主入口。
+Agent 生命周期（新增/调岗/移除/消耗统计）由 HRBP skill 执行，内部脚本位于 `crews/hrbp/skills/*/scripts/`，不作为人类用户主入口。
 
 ## Addon 开发
 

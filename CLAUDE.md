@@ -2,15 +2,15 @@
 
 ## 项目概述
 
-本项目旨在为上游 [openclaw/openclaw](https://github.com/openclaw/openclaw) 提供一套优雅的“强化机制”。包括：
-- Crew 机制：利用 openclaw 自有的 spawn session 机制，创建多 crew，每个 crew 都是一个配备了不同 rules、skills 的 agent。这样的目的是任务执行更专业、更省 token、更快！（因为不需要每个 session 都带全部的规则和 skills）；
-- Addon 机制：可以加载 addon 包，每个 addon 包均可以提供对于 openclaw 原版的依赖修改、源代码修改，增加extension/plugin、全局 skill 或者 crew。
-- 最佳实践的配置模板和一系列“一键”脚本
+本项目旨在为上游 [openclaw/openclaw](https://github.com/openclaw/openclaw) 提供一套优雅的"强化机制"。包括：
+- Crews 机制：利用 openclaw 自有的 spawn session 机制，创建多个 Crew 实例，每个 Crew 都是一个配备了不同 rules、skills 的 agent。核心理念是 **Template → Instance** 分离：`crews/` 存放模板蓝图，通过 HRBP 实例化为独立运行的 Agent，同一模板可创建多个实例。这样的目的是任务执行更专业、更省 token、更快！
+- Addon 机制：可以加载 addon 包，每个 addon 包均可以提供对于 openclaw 原版的依赖修改、源代码修改，增加extension/plugin、全局 skill 或者 Crew 模板。
+- 最佳实践的配置模板和一系列"一键"脚本
 
 注意：
 - 本代码仓不直接修改上游 openclaw 的源码，所有增强均需通过上述两个机制实现。
-- 本代码仓会内置多个 crew（目前只有 hrbp，后面会逐步增加）。
-- 本代码仓本身不包含任何 addon，仅仅提供应用 addon 的能力。未来基于这种能力，我们将打造一套开放的“addon”共享社区。
+- 本代码仓会内置多个 Crew 模板（内置三个系统级 Crew + 多个官方模板）。
+- 本代码仓本身不包含任何 addon，仅仅提供应用 addon 的能力。未来基于这种能力，我们将打造一套开放的"addon"共享社区。
 
 ## 项目结构
 
@@ -19,13 +19,19 @@
 ```
 openclaw_for_business/
 ├── openclaw/              # 上游仓库（git clone，禁止直接修改）
-├── crew/                  # 多 Agent 系统（内置核心，非 addon）
+├── crews/                 # Crew 模板库 + 内置 Crew
 │   ├── shared/            # 共享协议（RULES.md、TEMPLATES.md）
-│   ├── workspaces/        # Agent workspace 模板
-│   │   ├── main/          # Main Agent（路由调度器）
-│   │   └── hrbp/          # HRBP Agent（默认预制的第一个 Agent）
-│   │       └── skills/    # HRBP 专属技能（recruit/modify/remove/list/usage）
-│   └── role-templates/    # 角色参考模板（供 HRBP 招聘时使用）
+│   ├── _template/         # 空白脚手架（创建新模板的起点）
+│   ├── index.md           # 模板注册表（HRBP 维护）
+│   ├── main/              # [built-in] Main Agent（路由调度器）
+│   ├── hrbp/              # [built-in] HRBP（Crew 生命周期管理）
+│   │   └── skills/        # HRBP 专属技能（recruit/modify/remove/list/usage）
+│   ├── it-engineer/       # [built-in] IT Engineer（系统运维）
+│   ├── customer-service/  # [official] 客服模板
+│   ├── developer/         # [official] 开发者模板
+│   ├── content-writer/    # [official] 内容创作模板
+│   ├── market-analyst/    # [official] 市场分析��板
+│   └── operations/        # [official] 运营管理模板
 ├── skills/                # 全局共享技能（所有 Agent 可见）
 ├── addons/                # 第三方 addon 安装目录（.gitignore 不跟踪子目录）
 ├── config-templates/      # 配置模板（版本控制）
@@ -52,24 +58,24 @@ openclaw_for_business/
 - 每当实际运行配置（`~/.openclaw/openclaw.json`）经过验证可正常工作后，**必须将结构和最佳实践同步回 config-templates**
 - 敏感信息（apiKey、appSecret、auth token 等）在模板中留空，但字段结构必须保留
 
-### 2. 多 Agent 系统（crew/）
+### 2. Crews 系统（Template → Instance 模型）
 
-`crew/` 是项目的核心组件，定义了内置的多 Agent 系统：
+`crews/` 是项目的核心组件，存放 Crew 模板库和内置 Crew 定义：
 
-- **不是 addon** — 它是项目的默认预设，dev.sh 和 reinstall-daemon.sh 会自动安装
-- **HRBP 是第一个预制 Agent** — 负责 Agent 的生命周期管理（招聘/调岗/解雇）
-- **Main Agent 是路由调度器** — 负责消息路由和子 Agent 调度，并作为托底任务执行者
-- 每个 Agent workspace 包含 8 个 .md 文件（SOUL/AGENTS/MEMORY/USER/IDENTITY/TOOLS/TASKS/HEARTBEAT）和可选 `DENIED_SKILLS`
+- **Template vs Instance**：模板是蓝图（存在 `crews/`），实例是运行态（workspace 在 `~/.openclaw/`）。同一模板可实例化多个独立 Crew。
+- **内置 Crew**（main / hrbp / it-engineer）：全局唯一，不可删除，不可多实例，由 `setup-crew.sh` 自动安装，不受 HRBP 管理。
+- **非内置 Crew**：所有其他 Crew 的完整生命周期由 HRBP 管理（通过模板匹配→实例化→可选 channel 绑定）。
+- 每个模板/实例 workspace 包含 8 个 .md 文件（SOUL/AGENTS/MEMORY/USER/IDENTITY/TOOLS/TASKS/HEARTBEAT）和可选 `DENIED_SKILLS`
 - **技能两级体系**（与 OpenClaw 原生机制对齐）：
   - 全局共享：`skills/`（项目根目录）→ 安装到 `openclaw/skills/`，所有 Agent 可见
-  - Agent 专属：`crew/workspaces/<agent>/skills/` → 安装到 `~/.openclaw/workspace-<agent>/skills/`，仅该 Agent 可见
+  - Agent 专属：`crews/<template>/skills/` → 安装到 `~/.openclaw/workspace-<instance>/skills/`，仅该实例可见
   - **默认开放策略**：全部已启用内置 skill 对所有 Agent 开放，无需白名单配置
     - `agents.list[].skills` 字段默认不设置（openclaw 原生行为：所有已启用 skill 可见）
     - 如需屏蔽特定 skill，在 workspace 中放置 `DENIED_SKILLS` 文件（每行一个 skill 名称）
     - 有屏蔽列表时，`setup-crew.sh` 自动计算 allowlist = 全部内置 - 屏蔽列表，写入 `agents.list[].skills`
   - **精简内置 skill 集**：`config-templates/openclaw.json` 中通过 `skills.entries` 禁用平台无关 skill
     - 禁用的是个人工具类（苹果生态、智能家居、社交软件等），保留通用工具
-    - `apply-addons.sh` 每次运行时将禁用列表同���到 `~/.openclaw/openclaw.json`，确保升级后一致
+    - `apply-addons.sh` 每次运行时将禁用列表同步到 `~/.openclaw/openclaw.json`，确保升级后一致
 
 飞书渠道直连架构：
 - 每个 Agent 绑定一个独立的飞书 Bot（通过 `channels.feishu.accounts` 多账户配置）
@@ -77,12 +83,13 @@ openclaw_for_business/
 - 上游 feishu extension 原生支持多账户并行 WebSocket 监听、流式卡片回复、文档/云盘/知识库操作
 
 关键概念：
-- `agents.list[]` — Agent 注册表（id、name、workspace、subagents）
+- `agents.list[]` — Agent 实例注册表（id、name、workspace、subagents），仅使用上游原生字段
 - `bindings[]` — 渠道绑定配置（模式 B 直连）
-- `main` 和 `hrbp` 是受保护的系统 Agent，不可删除
-- HRBP 内部运维脚本放在 `crew/workspaces/hrbp/skills/*/scripts/`，`scripts/` 目录仅保留人类用户主入口脚本
+- `main`、`hrbp`、`it-engineer` 是受保护的内置 Crew，不可删除
+- 模板-实例映射关系由 HRBP 的 MEMORY.md 维护（不侵入 openclaw.json）
+- HRBP 内部运维脚本放在 `crews/hrbp/skills/*/scripts/`，`scripts/` 目录仅保留人类用户主入口脚本
 
-详见 `docs/crew-system.md`。
+详见 `crews/DESIGN.md` 和 `docs/crew-system.md`。
 
 ### 4. Addon 机制
 
@@ -92,11 +99,10 @@ openclaw_for_business/
 addon 四层加载机制（按稳定性递减）：
 1. **overrides.sh** — pnpm overrides / 依赖替换（最稳健，不依赖行号）
 2. **patches/*.patch** — git patch 精确代码改动（上游更新时可能需调整）
-3. **skills/*/SKILL.md** — 全局技能安装（默认仅 main Agent 可见）
-4. **crew/<agent-id>/** — 预制 Agent（workspace + Agent 专属 skills），由 HRBP 管理
+3. **skills/*/SKILL.md** — 全局技能安装（默认所有 Agent 可见）
+4. **crew/<template-id>/** — Crew 模板安装到 `crews/`（默认不自动实例化，需通过 HRBP 启用；addon.json 中 `auto-activate: true` 可自动实例化）
 
-addon 中的技能分两级：根目录 `skills/` 为全局技能；`crew/<agent>/skills/` 为 Agent 专属技能。
-预制 Agent 会被自动安装并注册到系统中，由 HRBP Agent 统一管理。
+addon 中的技能分两级：根目录 `skills/` 为全局技能；`crew/<template>/skills/` 为模板专属技能。
 
 详见 `scripts/apply-addons.sh`。
 
@@ -108,9 +114,9 @@ addon 中的技能分两级：根目录 `skills/` 为全局技能；`crew/<agent
 - 工作区：`~/.openclaw/workspace/`
 
 Agent 系统安装后额外目录：
-- Agent workspace：`~/.openclaw/workspace-<agent-id>/`（每个 Agent 独立 workspace）
-- 角色模板：`~/.openclaw/hrbp-templates/`（供 HRBP 招聘时参考）
-- 归档目录：`~/.openclaw/archived/`（已移除 Agent 的 workspace 归档）
+- Agent workspace：`~/.openclaw/workspace-<instance-id>/`（每个实例独立 workspace）
+- 模板库：`~/.openclaw/hrbp-templates/`（供 HRBP 运行时参考，含 index.md）
+- 归档目录：`~/.openclaw/archived/`（已停用实例的 workspace 归档）
 
 ## 常用命令
 

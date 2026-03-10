@@ -1,53 +1,104 @@
-# 多 Agent 系统架构
+# 多 Agent 系统架构（Crews v2）
 
 ## 概述
 
-多 Agent 系统是 openclaw-for-business 的核心组件，定义在项目根目录的 `crew/` 中。
+多 Agent 系统是 openclaw-for-business 的核心组件，定义在项目根目录的 `crews/` 中。
 
-核心理念：通过预制一系列具有不同专业角色定义、Rules 定义和技能配比的 Agent，实现：
-1. **任务专业性** — 每个 Agent 聚焦特定领域
-2. **并行处理** — 利用 OpenClaw 的 `sessions_spawn` 把任务拆到子进程完成
+核心理念：**Template → Instance 分离**。`crews/` 存放 Crew 模板蓝图，通过 HRBP 实例化为独立运行的 Agent。同一模板可实例化多个 Crew 实例。
+
+设计目标：
+1. **任务专业性** — 每个 Crew 聚焦特定领域
+2. **多实例化** — 同一角色模板可创建多个独立实例（如两条产品线各配一个客服）
+3. **并行处理** — 利用 OpenClaw 的 `sessions_spawn` 把任务拆到子进程完成
 
 采用**混合路由模式**：
 - **模式 A（统一入口）**：用户通过飞书 Bot 与 Main Agent 对话，Main Agent 通过 `sessions_spawn` 分发给子 Agent
-- **模式 B（渠道直连）**：子 Agent 通过 OpenClaw 原生 `bindings` 直接绑定到特定渠道（如微信）
+- **模式 B（渠道直连）**：子 Agent 通过 OpenClaw 原生 `bindings` 直接绑定到特定渠道
+- 同一个子 Agent 可以同时被两种方式使用
 
-同一个子 Agent 可以同时被两种方式使用。
+## 核心概念
+
+### Template（模板）
+模板是 Crew 的**蓝图**，定义角色的能力、性格、工具和工作流。存放在 `crews/` 目录下。
+
+模板来源：
+- **内置模板**（built-in）：main / hrbp / it-engineer — 系统级，由 `setup-crew.sh` 自动安装
+- **官方模板**（official）：customer-service / developer / content-writer / market-analyst / operations
+- **用户自建**（user-created）：通过 HRBP 创建
+- **市场引入**（marketplace）：未来从 Crew 市场下载
+
+### Instance（实例）
+实例是模板的**运行态**——一个实际工作的 Agent。特征：
+- 唯一 ID（如 `cs-product-a`）
+- 独立 workspace（`~/.openclaw/workspace-<instance-id>/`）
+- 独立记忆（MEMORY.md 随运行独立演化）
+- 独立 channel 绑定
+
+### Built-in Crew（内置 Crew）
+三个系统级 Crew，全局唯一，不可删除，不可多实例：
+
+| ID | 角色 | 特殊性 |
+|----|------|--------|
+| `main` | 路由调度器 + 托底执行者 | 消息入口 |
+| `hrbp` | Crew 生命周期管理 | 招聘/调岗/解雇 |
+| `it-engineer` | OFB 系统运维 | 部署/升级/排障 |
 
 ## 架构
 
 ```
 模式 A: 飞书用户 → Bridge → Gateway → Main Agent → spawn 子 Agent
-模式 B: 微信用户 → OpenClaw channel → Gateway bindings → 子 Agent（直接响应）
+模式 B: 渠道用户 → OpenClaw channel → Gateway bindings → 子 Agent（直接响应）
 ```
 
 **进程类型**：Gateway 单进程，所有 Agent 在内部以子进程模式运行（逻辑隔离）。
 
-## 源码结构（crew/）
+## 源码结构（crews/）
 
 ```
-crew/
-├── shared/            # 共享协议（所有 Agent 共用）
-│   ├── RULES.md       # Autonomy Ladder (L1/L2/L3)、QAPS 任务分类
-│   └── TEMPLATES.md   # Closeout 和 Checkpoint 模板
-├── workspaces/        # 内置 Agent 的 workspace 模板
-│   ├── main/          # Main Agent（路由调度器）
-│   └── hrbp/          # HRBP Agent（默认预制的第一个 Agent）
-│       └── skills/    # HRBP 专属技能
-│           ├── hrbp-recruit/  # 招聘新 Agent
-│           ├── hrbp-modify/   # 修改已有 Agent
-│           ├── hrbp-remove/   # 移除 Agent
-│           ├── hrbp-list/     # 花名册/路由状态查询
-│           └── hrbp-usage/    # 用量与成本统计
-└── role-templates/    # 角色参考模板（供 HRBP 招聘时使用）
-    ├── _template/     # 空白模板（8 个 .md + BUILTIN_SKILLS）
-    ├── developer.md
-    ├── customer-service.md
-    ├── market-analyst.md
-    ├── content-writer.md
-    └── operations.md
+crews/
+├── DESIGN.md              # 设计文档
+├── index.md               # 模板注册表（HRBP 维护）
+├── shared/                # 共享协议（所有 Crew 通用）
+│   ├── RULES.md           # Autonomy Ladder (L1/L2/L3)、QAPS
+│   └── TEMPLATES.md       # Closeout 和 Checkpoint 模板
+├── _template/             # 空白脚手架（创建新模板的起点）
+│
+│   # ── 内置模板 ──
+├── main/                  # [built-in] Main Agent
+├── hrbp/                  # [built-in] HRBP
+│   └── skills/            # HRBP 专属技能
+│       ├── hrbp-recruit/  # 招聘（实例化）
+│       ├── hrbp-modify/   # 调岗（修改实例）
+│       ├── hrbp-remove/   # 解雇（停用实例）
+│       ├── hrbp-list/     # 花名册/路由状态查询
+│       └── hrbp-usage/    # 用量与成本统计
+├── it-engineer/           # [built-in] IT Engineer
+│
+│   # ── 官方模板 ──
+├── customer-service/      # [official] 客服
+├── developer/             # [official] 开发者
+├── content-writer/        # [official] 内容创作
+├── market-analyst/        # [official] 市场分析
+└── operations/            # [official] 运营管理
 
-skills/                # 全局共享技能（项目根目录，所有 Agent 可见）
+skills/                    # 全局共享技能（项目根目录，所有 Agent 可见）
+```
+
+### 运行时结构（~/.openclaw/）
+
+```
+~/.openclaw/
+├── openclaw.json               # 运行配置（agents.list[] 注册实例）
+├── workspace-main/             # Main Agent 实例 workspace
+├── workspace-hrbp/             # HRBP 实例 workspace
+├── workspace-it-engineer/      # IT Engineer 实例 workspace
+├── workspace-<instance-id>/    # 用户创建的实例 workspace
+├── hrbp-templates/             # 模板副本（供 HRBP 运行时参考）
+│   ├── index.md                # 模板注册表
+│   ├── _template/              # 空白脚手架
+│   ├── customer-service/       # 官方模板...
+│   └── ...
+└── archived/                   # 已停用实例的 workspace 归档
 ```
 
 ### 技能两级体系
@@ -57,12 +108,7 @@ skills/                # 全局共享技能（项目根目录，所有 Agent 可
 | 级别 | 位置 | 安装到 | 可见范围 |
 |------|------|--------|----------|
 | 全局共享 | `skills/`（项目根目录） | `openclaw/skills/` | 所有 Agent |
-| Agent 专属 | `crew/workspaces/<agent>/skills/` | `~/.openclaw/workspace-<agent>/skills/` | 仅该 Agent |
-
-最终每个 Agent 可见的技能集合为：
-- `workspace skills` + `agents.list[].skills` 中允许的内置 skills
-- 非 main agent 默认仅启用 workspace skills
-- main 默认启用全部内置 skills
+| 模板专属 | `crews/<template>/skills/` | `~/.openclaw/workspace-<instance>/skills/` | 仅该实例 |
 
 ## 核心组件
 
@@ -71,24 +117,30 @@ skills/                # 全局共享技能（项目根目录，所有 Agent 可
 - 优先通过 `sessions_spawn` 分发给对应子 Agent
 - 汇报子 Agent 结果
 - 没有匹配 crew 时才自己处理
-- 不确定时询问用户
+- 如无匹配且暗示缺少能力 → 建议通过 HRBP 招聘
 
-### HRBP Agent（默认预制的第一个 Agent）
-- 管理 Agent 完整生命周期：招聘（创建）、调岗（修改）、解雇（删除）
+### HRBP Agent（Crew 生命周期管理）
+- 管理 Crew 模板库（浏览、创建新模板）
+- 管理实例完整生命周期：招聘（实例化）、调岗（修改）、解雇（归档）
 - 受保护，不可删除
 - 五个 Skill：`hrbp-recruit`、`hrbp-modify`、`hrbp-remove`、`hrbp-list`、`hrbp-usage`
 
-## Agent 来源
+### IT Engineer Agent（系统运维）
+- 负责 OFB 系统的部署、维护、升级和故障排除
+- 面向非技术用户，用简明语言解释技术问题
+- 受保护，不可删除
 
-Agent 有三种创建方式：
+## 实例来源
 
-1. **内置预制**：`crew/workspaces/` 中定义的 Agent（main、hrbp），随 `dev.sh` / `reinstall-daemon.sh` 自动安装
-2. **HRBP 创建**：用户通过与 HRBP Agent 对话，根据需求创建定制化 Agent（默认方式）
-3. **Addon 预制**：第三方 addon 通过 `crew/` 目录贡献预制 Agent，由 `apply-addons.sh` 自动安装并注册，由 HRBP 统一管理
+Crew 实例有三种创建方式：
+
+1. **内置自动安装**：`crews/main/`、`crews/hrbp/`、`crews/it-engineer/` — 由 `setup-crew.sh` 自动实例化，不受 HRBP 管理
+2. **HRBP 实例化**：用户通过与 HRBP 对话，从模板库中选择模板并实例化为运行态 Agent（默认方式）
+3. **Addon 模板引入**：第三方 addon 通过 `crew/` 目录贡献模板，由 `apply-addons.sh` 安装到模板库，再由 HRBP 实例化（或 addon 指定 auto-activate）
 
 ## Workspace 结构
 
-每个 Agent 的 workspace 包含 8 个核心文件（可选 `BUILTIN_SKILLS`）：
+每个模板/实例的 workspace 包含 8 个核心文件：
 
 | 文件 | 用途 |
 |------|------|
@@ -100,7 +152,11 @@ Agent 有三种创建方式：
 | TOOLS.md | 可用工具和使用规则 |
 | TASKS.md | 活跃项目追踪 |
 | HEARTBEAT.md | 健康状态 |
-| BUILTIN_SKILLS（可选） | 启用的内置 skill（每行一个，不填=仅 workspace skills） |
+
+可选文件：
+- `DENIED_SKILLS` — 屏蔽的内置 skill 列表
+- `BUILTIN_SKILLS` — 推荐随实例安装的 skill
+- `skills/` — 模板/实例专属技能目录
 
 ## 共享协议
 
@@ -111,20 +167,22 @@ Agent 有三种创建方式：
 
 | 脚本 | 用途 |
 |------|------|
-| `setup-crew.sh` | 安装多 Agent 系统（部署 workspace、模板、配置，幂等） |
-| `crew/workspaces/hrbp/skills/hrbp-recruit/scripts/add-agent.sh` | HRBP 内部：注册新 Agent |
-| `crew/workspaces/hrbp/skills/hrbp-modify/scripts/modify-agent.sh` | HRBP 内部：修改 Agent 渠道绑定 |
-| `crew/workspaces/hrbp/skills/hrbp-remove/scripts/remove-agent.sh` | HRBP 内部：移除 Agent（workspace 归档） |
-| `crew/workspaces/hrbp/skills/hrbp-list/scripts/list-agents.sh` | HRBP 内部：列出所有 Agent 及状态 |
-| `crew/workspaces/hrbp/skills/hrbp-usage/scripts/agent-usage.sh` | HRBP 内部：统计 Agent 用量与成本 |
+| `scripts/setup-crew.sh` | 安装多 Agent 系统（部署内置 Crew、同步模板库、更新配置，幂等） |
+| `crews/hrbp/skills/hrbp-recruit/scripts/add-agent.sh` | HRBP 内部：注册新实例 |
+| `crews/hrbp/skills/hrbp-modify/scripts/modify-agent.sh` | HRBP 内部：修改实例渠道绑定 |
+| `crews/hrbp/skills/hrbp-remove/scripts/remove-agent.sh` | HRBP 内部：移除实例（workspace 归档） |
+| `crews/hrbp/skills/hrbp-list/scripts/list-agents.sh` | HRBP 内部：列出所有实例及状态 |
+| `crews/hrbp/skills/hrbp-usage/scripts/agent-usage.sh` | HRBP 内部：统计实例用量与成本 |
 
 ## 配置
 
-Agent 配置在 `~/.openclaw/openclaw.json` 中：
+Agent 实例配置在 `~/.openclaw/openclaw.json` 中（仅使用上游原生字段）：
 
-- `agents.list[]` — Agent 列表（id、name、workspace、subagents）
-- `agents.list[].skills` — Agent skill 白名单（workspace skills + 指定内置 skills）
+- `agents.list[]` — 实例列表（id、name、workspace、subagents）
+- `agents.list[].skills` — 实例 skill 白名单（有 DENIED_SKILLS 时自动计算）
 - `bindings[]` — 渠道绑定（模式 B 直连）
+
+模板-实例映射关系由 HRBP 的 MEMORY.md 维护，不侵入 openclaw.json。
 
 ## 路由模式
 

@@ -3,7 +3,7 @@
 #
 # 技能两级体系：
 #   - 全局 skills: skills/ (项目根目录) → 安装到 openclaw/skills/（默认只有 main agent 会启用，其他 crew 需要额外配置）
-#   - Agent 专属 skills: crew/workspaces/<agent>/skills/ → 已由 setup-crew.sh 安装到 workspace
+#   - Agent 专属 skills: crews/<template>/skills/ → 已由 setup-crew.sh 安装到 workspace
 #
 # 每次运行时：
 #   1. 恢复 openclaw/ 到干净状态
@@ -12,7 +12,7 @@
 #      a. overrides.sh  — pnpm overrides / 依赖替换（高稳健性）
 #      b. patches/*.patch — git patch（逻辑新增，需精确匹配）
 #      c. skills/*/SKILL.md — 全局 skill 安装
-#      d. crew/*/  — 预制 Agent 安装（workspace + Agent 专属 skills）
+#      d. crew/*/  — Crew 模板安装 + 可选自动实例化
 #
 # addon 目录结构：
 #   addons/<name>/
@@ -20,20 +20,20 @@
 #   ├── overrides.sh        # 可选：依赖替换脚本
 #   ├── patches/*.patch     # 可选：git 补丁
 #   ├── skills/*/SKILL.md   # 可选：全局技能（所有 Agent 可见）
-#   └── crew/               # 可选：预制 Agent
-#       └── <agent-id>/
-#           ├── SOUL.md ... HEARTBEAT.md  # workspace 文件
+#   └── crew/               # 可选：Crew 模板
+#       └── <template-id>/
+#           ├── SOUL.md ... HEARTBEAT.md  # 模板 workspace 文件
 #           ├── DENIED_SKILLS             # 可选：屏蔽特定内置 skill
-#           └── skills/*/SKILL.md         # Agent 专属技能
+#           └── skills/*/SKILL.md         # 模板专属技能
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-CREW_DIR="$PROJECT_ROOT/crew"
+CREWS_DIR="$PROJECT_ROOT/crews"
 ADDONS_DIR="$PROJECT_ROOT/addons"
 OPENCLAW_DIR="$PROJECT_ROOT/openclaw"
 OPENCLAW_HOME="$HOME/.openclaw"
 CONFIG_PATH="$OPENCLAW_HOME/openclaw.json"
-HRBP_ADD_AGENT_SCRIPT="$PROJECT_ROOT/crew/workspaces/hrbp/skills/hrbp-recruit/scripts/add-agent.sh"
+HRBP_ADD_AGENT_SCRIPT="$PROJECT_ROOT/crews/hrbp/skills/hrbp-recruit/scripts/add-agent.sh"
 
 # ─── 恢复上游到干净状态 ──────────────────────────────────────────
 cd "$OPENCLAW_DIR"
@@ -158,50 +158,75 @@ for addon_dir in "$ADDONS_DIR"/*/; do
     done
   fi
 
-  # ─── 第四层：预制 Agent 安装（crew/） ──────────────────────────
+  # ─── 第四层：Crew 模板安装（crew/ → crews/） ─────────────────
   if [ -d "$addon_dir/crew" ]; then
-    echo "  🤖 Installing agents..."
-    for agent_ws in "$addon_dir"/crew/*/; do
-      [ -d "$agent_ws" ] || continue
-      # 需要至少有 SOUL.md 才算有效的 agent workspace
-      [ -f "${agent_ws}SOUL.md" ] || continue
+    echo "  🤖 Installing crew templates..."
+    for template_ws in "$addon_dir"/crew/*/; do
+      [ -d "$template_ws" ] || continue
+      # 需要至少有 SOUL.md 才算有效的模板
+      [ -f "${template_ws}SOUL.md" ] || continue
 
-      agent_id="$(basename "$agent_ws")"
-      dest="$OPENCLAW_HOME/workspace-$agent_id"
+      template_id="$(basename "$template_ws")"
 
-      # 安装 workspace（不覆盖已存在的）
-      if [ -d "$dest" ]; then
-        echo "    ⚠️  workspace-$agent_id already exists, skipping"
+      # 安装模板到 crews/（代码仓中，供 HRBP 使用）
+      template_dest="$CREWS_DIR/$template_id"
+      if [ -d "$template_dest" ]; then
+        echo "    ⚠️  template $template_id already exists in crews/, skipping"
       else
-        mkdir -p "$dest"
-        cp "${agent_ws}"*.md "$dest/"
-        if [ -f "${agent_ws}DENIED_SKILLS" ]; then
-          cp "${agent_ws}DENIED_SKILLS" "$dest/"
-        fi
-        # 复制共享协议
-        if [ -d "$CREW_DIR/shared" ]; then
-          cp "$CREW_DIR/shared/"*.md "$dest/"
-        fi
-        # 复制 Agent 专属 skills（如有）
-        if [ -d "${agent_ws}skills" ]; then
-          cp -r "${agent_ws}skills" "$dest/"
-        fi
-        echo "    ✅ workspace-$agent_id installed"
+        cp -r "$template_ws" "$template_dest"
+        echo "    ✅ template $template_id installed to crews/"
       fi
 
-      # 注册 agent（如果尚未注册）
-      if [ -f "$CONFIG_PATH" ]; then
-        if ! node -e "
-          const c = JSON.parse(require('fs').readFileSync('$CONFIG_PATH','utf8'));
-          process.exit((c.agents?.list || []).some(a => a.id === '$agent_id') ? 0 : 1);
-        " 2>/dev/null; then
-          if [ ! -f "$HRBP_ADD_AGENT_SCRIPT" ]; then
-            echo "    ❌ HRBP add-agent script not found: $HRBP_ADD_AGENT_SCRIPT"
-            exit 1
+      # 同步到 hrbp-templates/（运行时副本）
+      hrbp_template_dest="$OPENCLAW_HOME/hrbp-templates/$template_id"
+      rm -rf "$hrbp_template_dest"
+      cp -r "$template_ws" "$hrbp_template_dest"
+
+      # 可选自动实例化（addon.json 中 auto-activate: true���
+      auto_activate="$(node -e "
+        const a = JSON.parse(require('fs').readFileSync('$addon_dir/addon.json','utf8'));
+        console.log(a['auto-activate'] === true ? 'true' : 'false');
+      " 2>/dev/null || echo "false")"
+
+      if [ "$auto_activate" = "true" ]; then
+        agent_id="$template_id"
+        dest="$OPENCLAW_HOME/workspace-$agent_id"
+
+        if [ -d "$dest" ]; then
+          echo "    ⚠️  workspace-$agent_id already exists, skipping auto-activate"
+        else
+          mkdir -p "$dest"
+          cp "${template_ws}"*.md "$dest/"
+          if [ -f "${template_ws}DENIED_SKILLS" ]; then
+            cp "${template_ws}DENIED_SKILLS" "$dest/"
           fi
-          "$HRBP_ADD_AGENT_SCRIPT" "$agent_id"
-          echo "    ✅ agent $agent_id registered"
+          # 复制共享协议
+          if [ -d "$CREWS_DIR/shared" ]; then
+            cp "$CREWS_DIR/shared/"*.md "$dest/"
+          fi
+          # 复制模板专属 skills（如有）
+          if [ -d "${template_ws}skills" ]; then
+            cp -r "${template_ws}skills" "$dest/"
+          fi
+          echo "    ✅ workspace-$agent_id auto-activated"
+
+          # 注册 agent（如果尚未注册）
+          if [ -f "$CONFIG_PATH" ]; then
+            if ! node -e "
+              const c = JSON.parse(require('fs').readFileSync('$CONFIG_PATH','utf8'));
+              process.exit((c.agents?.list || []).some(a => a.id === '$agent_id') ? 0 : 1);
+            " 2>/dev/null; then
+              if [ ! -f "$HRBP_ADD_AGENT_SCRIPT" ]; then
+                echo "    ❌ HRBP add-agent script not found: $HRBP_ADD_AGENT_SCRIPT"
+                exit 1
+              fi
+              "$HRBP_ADD_AGENT_SCRIPT" "$agent_id"
+              echo "    ✅ agent $agent_id registered"
+            fi
+          fi
         fi
+      else
+        echo "    📋 template $template_id ready (use HRBP to instantiate)"
       fi
     done
   fi

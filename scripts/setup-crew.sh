@@ -1,15 +1,18 @@
 #!/bin/bash
 # setup-crew.sh - 多 Agent 系统安装脚本
-# 将 crew/ 中的 workspace 模板、共享协议、角色模板部署到 ~/.openclaw/
+# 将 crews/ 中的内置模板、共享协议、模板库部署到 ~/.openclaw/
 # 幂等设计：已存在的 workspace 不会覆盖（除非 --force）
 set -e
 
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-CREW_DIR="$PROJECT_ROOT/crew"
+CREWS_DIR="$PROJECT_ROOT/crews"
 OPENCLAW_HOME="$HOME/.openclaw"
 CONFIG_PATH="$OPENCLAW_HOME/openclaw.json"
 FORCE=false
+
+# 内置 Crew 列表（全局唯一，不可删除，不可多实例）
+BUILTIN_CREWS="main hrbp it-engineer"
 
 source "$SCRIPT_DIR/lib/agent-skills.sh"
 
@@ -127,17 +130,17 @@ sync_agent_skill_filter() {
   "
 }
 
-if [ ! -d "$CREW_DIR" ]; then
-  echo "❌ crew/ directory not found at $CREW_DIR"
+if [ ! -d "$CREWS_DIR" ]; then
+  echo "❌ crews/ directory not found at $CREWS_DIR"
   exit 1
 fi
 
-echo "📦 Setting up Agent System (crew)..."
+echo "📦 Setting up Agent System (crews)..."
 
-# ─── 1. 安装内置 Agent workspace（main + hrbp） ─────────────────
-for agent_dir in "$CREW_DIR"/workspaces/*/; do
+# ─── 1. 安装内置 Crew workspace（main / hrbp / it-engineer） ────
+for agent_id in $BUILTIN_CREWS; do
+  agent_dir="$CREWS_DIR/$agent_id"
   [ -d "$agent_dir" ] || continue
-  agent_id="$(basename "$agent_dir")"
   dest="$OPENCLAW_HOME/workspace-$agent_id"
 
   if [ -d "$dest" ] && [ "$FORCE" != "true" ]; then
@@ -146,7 +149,7 @@ for agent_dir in "$CREW_DIR"/workspaces/*/; do
   fi
 
   mkdir -p "$dest"
-  cp "$agent_dir"*.md "$dest/"
+  cp "$agent_dir"/*.md "$dest/"
   # 复制 DENIED_SKILLS（如有）
   if [ -f "$agent_dir/DENIED_SKILLS" ]; then
     cp "$agent_dir/DENIED_SKILLS" "$dest/"
@@ -158,26 +161,35 @@ for agent_dir in "$CREW_DIR"/workspaces/*/; do
   echo "  ✅ workspace-$agent_id installed"
 done
 
-# ─── 2. 复制共享协议到每个已安装的 workspace ─────────────────────
-for agent_dir in "$CREW_DIR"/workspaces/*/; do
-  [ -d "$agent_dir" ] || continue
-  agent_id="$(basename "$agent_dir")"
+# ─── 2. 复制共享协议到每个已安装的内置 workspace ─────────────────
+for agent_id in $BUILTIN_CREWS; do
   dest="$OPENCLAW_HOME/workspace-$agent_id"
-  if [ -d "$dest" ] && [ -d "$CREW_DIR/shared" ]; then
-    cp "$CREW_DIR/shared/"*.md "$dest/"
+  if [ -d "$dest" ] && [ -d "$CREWS_DIR/shared" ]; then
+    cp "$CREWS_DIR/shared/"*.md "$dest/"
   fi
 done
 echo "  ✅ Shared protocols (RULES.md, TEMPLATES.md) copied"
 
-# ─── 3. 安装角色模板 ─────────────────────────────────────────────
-if [ -d "$CREW_DIR/role-templates" ]; then
-  ROLE_DEST="$OPENCLAW_HOME/hrbp-templates"
-  mkdir -p "$ROLE_DEST"
-  cp -r "$CREW_DIR/role-templates/"* "$ROLE_DEST/"
-  echo "  ✅ Role templates installed to $ROLE_DEST"
+# ─── 3. 同步模板库到 hrbp-templates/（供 HRBP 运行时参考） ──────
+TEMPLATE_DEST="$OPENCLAW_HOME/hrbp-templates"
+mkdir -p "$TEMPLATE_DEST"
+# 复制所有模板目录（包括 _template 脚手架和官方模板）
+for template_dir in "$CREWS_DIR"/*/; do
+  [ -d "$template_dir" ] || continue
+  template_id="$(basename "$template_dir")"
+  # 跳过 shared/ 目录
+  [ "$template_id" = "shared" ] && continue
+  # 同步模板（总是覆盖——模板由代码仓控制）
+  rm -rf "$TEMPLATE_DEST/$template_id"
+  cp -r "$template_dir" "$TEMPLATE_DEST/$template_id"
+done
+# 同步 index.md
+if [ -f "$CREWS_DIR/index.md" ]; then
+  cp "$CREWS_DIR/index.md" "$TEMPLATE_DEST/index.md"
 fi
+echo "  ✅ Template library synced to $TEMPLATE_DEST"
 
-# ─── 4. 更新 openclaw.json（合并 main/hrbp + skills 过滤） ─��──────
+# ─── 4. 更新 openclaw.json（合并内置 Crew + skills 过滤） ────────
 if [ -f "$CONFIG_PATH" ]; then
   echo "  📝 Merging agent config into openclaw.json..."
 

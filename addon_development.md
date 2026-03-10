@@ -72,8 +72,8 @@ addons/<your-addon-name>/
 ├── skills/
 │   └── <skill-name>/
 │       └── SKILL.md      # Optional: global skills (visible to all agents)
-└── crew/
-    └── <agent-id>/       # Optional: preconfigured agent workspace + skills
+└── crews/
+    └── <template-id>/    # Optional: crew template (8 workspace files + skills)
         ├── SOUL.md
         ├── IDENTITY.md
         └── skills/
@@ -132,23 +132,24 @@ git format-patch HEAD~1 -o ../addons/my-addon/patches/
 Drop a `SKILL.md` into `skills/<skill-name>/` and it will be copied into the openclaw global skills directory, making it available to all agents.
 
 By default, all enabled built-in skills are visible to all agents (no allowlist needed).
-If you want to restrict a skill to specific agents, place it under `crew/<agent-id>/skills/` instead (Layer 4).
+If you want to restrict a skill to specific agents, place it under `crews/<template-id>/skills/` instead (Layer 4).
 
-### Layer 4 — `crew/<agent-id>/` (preconfigured agents)
+### Layer 4 — `crews/<template-id>/` (crew templates)
 
-Provide a complete agent workspace template. During `apply-addons.sh`, the agent is:
-1. Installed to `~/.openclaw/workspace-<agent-id>/`
-2. Registered in `openclaw.json` under `agents.list[]`
-3. Managed by the built-in HRBP agent going forward
+Provide a complete crew template (8 workspace .md files + optional skills). During `apply-addons.sh`, the template is:
+1. Installed to `crews/<template-id>/` and synced to `~/.openclaw/hrbp-templates/<template-id>/`
+2. Registered in the template index (`crews/index.md`)
+3. Optionally auto-activated as an instance (if `addon.json` has `"auto-activate": true`)
+4. Instance lifecycle managed by the built-in HRBP agent going forward
 
-Skills placed under `crew/<agent-id>/skills/<skill-name>/SKILL.md` are installed as agent-private skills, visible only to that agent.
+Skills placed under `crews/<template-id>/skills/<skill-name>/SKILL.md` are installed as template-specific skills, visible only to instances created from that template.
 
 ---
 
 ## 4. Development Workflow
 
 1. **Pin openclaw** — clone openclaw at the version from `openclaw.version` (see §1).
-2. **Make your changes** — write skills, craft patches, add crew configs.
+2. **Make your changes** — write skills, craft patches, add crew templates.
 3. **Test locally** — run `./scripts/apply-addons.sh` from `openclaw-for-business` root with your addon in `addons/`.
 4. **Add `openclaw_version` + `openclaw_commit` to `addon.json`** — so users know what version you tested against.
 5. **Lock CI** — use the pin pattern from §1 in your addon repo's GitHub Actions.
