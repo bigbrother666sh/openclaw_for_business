@@ -79,6 +79,27 @@ resolve_denied_override_for_agent() {
   done <<< "$DENIED_OVERRIDES"
 }
 
+resolve_builtin_file_for_agent() {
+  local agent_id="$1"
+  local workspace_dir="$2"
+
+  local workspace_file="$workspace_dir/BUILTIN_SKILLS"
+  if [ -f "$workspace_file" ]; then
+    printf '%s\n' "$workspace_file"
+    return
+  fi
+
+  # 兼容老版本已存在 workspace（未携带 BUILTIN_SKILLS 文件）：
+  # 回退到仓库模板中的 BUILTIN_SKILLS 作为默认额外技能来源。
+  local template_file="$CREWS_DIR/$agent_id/BUILTIN_SKILLS"
+  if [ -f "$template_file" ]; then
+    printf '%s\n' "$template_file"
+    return
+  fi
+
+  printf '%s\n' "$workspace_file"
+}
+
 sync_agent_skill_filter() {
   local agent_id="$1"
   local agent_override=""
@@ -101,16 +122,19 @@ sync_agent_skill_filter() {
   fi
 
   local denied_file="$workspace_dir/DENIED_SKILLS"
+  local builtin_file=""
+  builtin_file="$(resolve_builtin_file_for_agent "$agent_id" "$workspace_dir")"
   local skills_result=""
   skills_result="$(resolve_agent_skills_json \
     "$agent_id" \
     "$workspace_dir" \
+    "" \
+    "$builtin_file" \
     "$agent_override" \
     "$denied_file" \
     "$PROJECT_ROOT")"
 
-  # 空字符串 → 不设 skills 过滤（删除 skills 字段，所有已启用 skill 可见）
-  # JSON 数组  → 写入明确的 allowlist
+  # JSON 数组 → 写入明确的 allowlist
   AGENT_ID="$agent_id" AGENT_SKILLS_RESULT="$skills_result" node -e "
     const fs = require('fs');
     const c = JSON.parse(fs.readFileSync('$CONFIG_PATH', 'utf8'));
@@ -118,14 +142,7 @@ sync_agent_skill_filter() {
     const idx = list.findIndex((entry) => entry.id === process.env.AGENT_ID);
     if (idx >= 0) {
       const skillsResult = process.env.AGENT_SKILLS_RESULT || '';
-      if (skillsResult.trim()) {
-        // 有明确的 allowlist → 写入 skills 字段
-        list[idx] = { ...list[idx], skills: JSON.parse(skillsResult) };
-      } else {
-        // 无过滤 → 删除 skills 字段，让 openclaw 默认开放所有已启用 skill
-        const { skills: _removed, ...rest } = list[idx];
-        list[idx] = rest;
-      }
+      list[idx] = { ...list[idx], skills: JSON.parse(skillsResult || '[]') };
       fs.writeFileSync('$CONFIG_PATH', JSON.stringify(c, null, 2) + '\\n');
     }
   "
@@ -154,6 +171,10 @@ for agent_id in $BUILTIN_CREWS; do
   # 复制 DENIED_SKILLS（如有）
   if [ -f "$agent_dir/DENIED_SKILLS" ]; then
     cp "$agent_dir/DENIED_SKILLS" "$dest/"
+  fi
+  # 复制 BUILTIN_SKILLS（如有）
+  if [ -f "$agent_dir/BUILTIN_SKILLS" ]; then
+    cp "$agent_dir/BUILTIN_SKILLS" "$dest/"
   fi
   # 复制 Agent 专属 skills（如有）
   if [ -d "$agent_dir/skills" ]; then
@@ -197,22 +218,31 @@ if [ -f "$CONFIG_PATH" ]; then
   MAIN_OVERRIDE="$(resolve_denied_override_for_agent "main")"
   HRBP_OVERRIDE="$(resolve_denied_override_for_agent "hrbp")"
   IT_OVERRIDE="$(resolve_denied_override_for_agent "it-engineer")"
+  MAIN_BUILTIN_FILE="$(resolve_builtin_file_for_agent "main" "$OPENCLAW_HOME/workspace-main")"
+  HRBP_BUILTIN_FILE="$(resolve_builtin_file_for_agent "hrbp" "$OPENCLAW_HOME/workspace-hrbp")"
+  IT_BUILTIN_FILE="$(resolve_builtin_file_for_agent "it-engineer" "$OPENCLAW_HOME/workspace-it-engineer")"
 
   MAIN_SKILLS_RESULT="$(resolve_agent_skills_json \
     "main" \
     "$OPENCLAW_HOME/workspace-main" \
+    "" \
+    "$MAIN_BUILTIN_FILE" \
     "$MAIN_OVERRIDE" \
     "$OPENCLAW_HOME/workspace-main/DENIED_SKILLS" \
     "$PROJECT_ROOT")"
   HRBP_SKILLS_RESULT="$(resolve_agent_skills_json \
     "hrbp" \
     "$OPENCLAW_HOME/workspace-hrbp" \
+    "" \
+    "$HRBP_BUILTIN_FILE" \
     "$HRBP_OVERRIDE" \
     "$OPENCLAW_HOME/workspace-hrbp/DENIED_SKILLS" \
     "$PROJECT_ROOT")"
   IT_SKILLS_RESULT="$(resolve_agent_skills_json \
     "it-engineer" \
     "$OPENCLAW_HOME/workspace-it-engineer" \
+    "" \
+    "$IT_BUILTIN_FILE" \
     "$IT_OVERRIDE" \
     "$OPENCLAW_HOME/workspace-it-engineer/DENIED_SKILLS" \
     "$PROJECT_ROOT")"
@@ -222,13 +252,7 @@ if [ -f "$CONFIG_PATH" ]; then
     const c = JSON.parse(fs.readFileSync('$CONFIG_PATH', 'utf8'));
 
     const applySkills = (entry, skillsResult) => {
-      const result = (skillsResult || '').trim();
-      if (result) {
-        return { ...entry, skills: JSON.parse(result) };
-      }
-      // 无过滤 → 删除 skills 字段
-      const { skills: _removed, ...rest } = entry;
-      return rest;
+      return { ...entry, skills: JSON.parse((skillsResult || '[]').trim() || '[]') };
     };
 
     if (!c.agents) c.agents = {};

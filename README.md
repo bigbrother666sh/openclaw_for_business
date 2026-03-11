@@ -225,6 +225,64 @@ cd openclaw && pnpm build && cd ..
 ./scripts/setup-crew.sh --denied-skills hrbp:slack,github
 ```
 
+## Skill 策略（OFB 默认）
+
+OFB 不再采用“空 `agents.list[].skills` = 继承全量内置技能”的方式，而是**始终写入每个 Agent 的 skills allowlist**。
+
+- 全局基线技能（默认所有 Agent 都有，含 HRBP 新招实例）：
+  - 上游内置：`1password`、`healthcheck`、`model-usage`、`nano-pdf`、`skill-creator`、`ordercli`、`session-logs`、`tmux`、`weather`、`xurl`、`video-frames`
+  - OFB 额外新增：`self-improving`
+- 非基线上游技能默认从“全员默认配备”中剔除，仅可通过 `BUILTIN_SKILLS` / `--builtin-skills` 按 Agent 追加。
+- `DENIED_SKILLS` 始终作为最终裁剪层（从“基线 + 追加”里减掉指定 skill）。
+- `it-engineer` 与 `developer` 模板默认追加：`github`、`gh-issues`、`coding-agent`。
+
+当前从上游默认全员集合中剔除的内置 skill（如需可按 Agent 追加）：
+
+```text
+apple-notes
+apple-reminders
+bear-notes
+blogwatcher
+blucli
+bluebubbles
+browser-guide
+camsnap
+canvas
+clawhub
+coding-agent
+discord
+eightctl
+gemini
+gh-issues
+gifgrep
+github
+gog
+goplaces
+himalaya
+imsg
+mcporter
+nano-banana-pro
+notion
+obsidian
+openai-image-gen
+openai-whisper
+openai-whisper-api
+openhue
+oracle
+peekaboo
+sag
+sherpa-onnx-tts
+slack
+songsee
+sonoscli
+spotify-player
+summarize
+things-mac
+trello
+voice-call
+wacli
+```
+
 Agent 生命周期（新增/调岗/移除/消耗统计）由 HRBP skill 执行，内部脚本位于 `crews/hrbp/skills/*/scripts/`，不作为人类用户主入口。
 
 ## Addon 开发

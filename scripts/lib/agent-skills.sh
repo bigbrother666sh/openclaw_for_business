@@ -1,12 +1,13 @@
 #!/bin/bash
 # agent-skills.sh - 统一计算 Agent 的技能过滤配置
 #
-# 设计理念（新版）：
-#   - 默认所有已启用 skill 对全部 Agent 开放（不设 skills 过滤字段）
-#   - 如需屏蔽特定 skill，在 workspace 中放置 DENIED_SKILLS 文件（每行一个 skill 名称）
+# 设计理念（OFB）：
+#   - 每个 Agent 默认都使用「全局基线技能集」（见 list_default_global_skill_names）
+#   - 可通过 BUILTIN_SKILLS（或显式参数）在基线之上追加 bundled skills
+#   - 可通过 DENIED_SKILLS（或显式参数）从最终列表中排除技能
+#   - 最终总是写入 agents.list[].skills，避免“空 skills 字段 => 全量技能泄露”
 #   - resolve_agent_skills_json 返回：
-#       空字符串 ""  → 不需要过滤（删除 skills 字段，所有已启用 skill 可见）
-#       JSON 数组   → 只显示指定 skill（用于有 denial list 的 agent）
+#       JSON 数组   → Agent 最终可见 skills（bundled + workspace）
 
 set -e
 
@@ -35,6 +36,23 @@ list_builtin_skill_names() {
   done | sort
 }
 
+list_default_global_skill_names() {
+  cat <<'EOF'
+1password
+healthcheck
+model-usage
+nano-pdf
+skill-creator
+ordercli
+session-logs
+tmux
+weather
+xurl
+video-frames
+self-improving
+EOF
+}
+
 list_workspace_skill_names() {
   local workspace_dir="$1"
   local workspace_skills_dir="$workspace_dir/skills"
@@ -49,6 +67,42 @@ list_workspace_skill_names() {
       basename "$skill_dir"
     fi
   done | sort
+}
+
+# 读取额外 bundled skills（来自 BUILTIN_SKILLS 文件或命令行参数）
+# 返回：每行一个 skill 名称，空字符串表示无额外追加
+resolve_additional_builtin_skill_names() {
+  local explicit_tokens="$1"
+  local builtin_file="$2"
+  local project_root="$3"
+
+  local raw=""
+  if [ -n "$explicit_tokens" ]; then
+    raw="$explicit_tokens"
+  elif [ -f "$builtin_file" ]; then
+    raw="$(cat "$builtin_file")"
+  fi
+
+  [ -n "$raw" ] || return 0
+
+  local tokens=""
+  tokens="$(split_skill_tokens "$raw")"
+  [ -n "$tokens" ] || return 0
+
+  # 支持 all/*：扩展为当前可发现的 bundled skills
+  if printf '%s\n' "$tokens" | grep -Eiq '^(all|\*)$'; then
+    local all_builtins=""
+    all_builtins="$(list_builtin_skill_names "$project_root")"
+    if [ -n "$all_builtins" ]; then
+      printf '%s\n' "$all_builtins"
+      return 0
+    fi
+    echo "  ⚠️  Cannot resolve bundled skills for 'all' (openclaw/skills not found)." >&2
+    return 0
+  fi
+
+  # 额外技能不做强校验，允许先声明后安装
+  printf '%s\n' "$tokens"
 }
 
 # 读取需要屏蔽的 skill 列表（来自 DENIED_SKILLS 文件或命令行参数）
@@ -72,14 +126,28 @@ resolve_denied_skill_names() {
 
 # 计算 Agent 的技能过滤配置
 # 返回：
-#   空字符串 ""  → 不设 skills 过滤（默认开放全部已启用 skill）
-#   JSON 数组   → 明确的 allowlist（用于有 denied skill 的 agent）
+#   JSON 数组   → 明确的 allowlist（默认基线 + 额外 - denied + workspace）
 resolve_agent_skills_json() {
   local agent_id="$1"
   local workspace_dir="$2"
-  local explicit_denied_tokens="$3"
-  local denied_file="$4"
-  local project_root="$5"
+  local explicit_builtin_tokens="$3"
+  local builtin_file="$4"
+  local explicit_denied_tokens="$5"
+  local denied_file="$6"
+  local project_root="$7"
+
+  local default_builtins=""
+  default_builtins="$(list_default_global_skill_names)"
+
+  local additional_builtins=""
+  additional_builtins="$(resolve_additional_builtin_skill_names \
+    "$explicit_builtin_tokens" \
+    "$builtin_file" \
+    "$project_root")"
+
+  local merged_builtins=""
+  merged_builtins="$(printf '%s\n%s\n' "$default_builtins" "$additional_builtins" \
+    | awk 'NF && !seen[$0]++')"
 
   local denied_names
   denied_names="$(resolve_denied_skill_names \
@@ -87,23 +155,17 @@ resolve_agent_skills_json() {
     "$explicit_denied_tokens" \
     "$denied_file")"
 
-  # 无屏蔽列表 → 不需要设置 skills 过滤，返回空字符串
-  if [ -z "$denied_names" ]; then
-    printf ""
-    return 0
-  fi
-
-  # 有屏蔽列表 → 计算 allowlist = (所有内置 skill - denied) + workspace skills
-  local all_builtins
-  all_builtins="$(list_builtin_skill_names "$project_root")"
-
   local allowed_builtins=""
-  while IFS= read -r skill; do
-    [ -n "$skill" ] || continue
-    if ! printf '%s\n' "$denied_names" | grep -Fxq "$skill"; then
-      allowed_builtins="$allowed_builtins"$'\n'"$skill"
-    fi
-  done <<< "$all_builtins"
+  if [ -n "$denied_names" ]; then
+    while IFS= read -r skill; do
+      [ -n "$skill" ] || continue
+      if ! printf '%s\n' "$denied_names" | grep -Fxq "$skill"; then
+        allowed_builtins="$allowed_builtins"$'\n'"$skill"
+      fi
+    done <<< "$merged_builtins"
+  else
+    allowed_builtins="$merged_builtins"
+  fi
 
   local workspace_skills
   workspace_skills="$(list_workspace_skill_names "$workspace_dir")"

@@ -2,7 +2,7 @@
 # apply-addons.sh - 全局 skills 安装 + 通用 addon 加载器
 #
 # 技能两级体系：
-#   - 全局 skills: skills/ (项目根目录) → 安装到 openclaw/skills/（默认只有 main agent 会启用，其他 crew 需要额外配置）
+#   - 全局 skills: skills/ (项目根目录) → 安装到 openclaw/skills/（由各 Agent 的 skills allowlist 决定可见范围）
 #   - Agent 专属 skills: crews/<template>/skills/ → 已由 setup-crew.sh 安装到 workspace
 #
 # 每次运行时：
@@ -46,18 +46,62 @@ if [ -f "$CONFIG_PATH" ] && [ -f "$PROJECT_ROOT/config-templates/openclaw.json" 
     const fs = require('fs');
     const running = JSON.parse(fs.readFileSync('$CONFIG_PATH', 'utf8'));
     const template = JSON.parse(fs.readFileSync('$PROJECT_ROOT/config-templates/openclaw.json', 'utf8'));
+    const clone = (value) => {
+      if (value && typeof value === 'object') return JSON.parse(JSON.stringify(value));
+      return value;
+    };
+    let changed = false;
 
-    // 将模板中所有 skills.entries 设置同步到运��配置
+    // 将模板中所有 skills.entries 设置同步到运行配置
     // 确保用户即使更新也能保持精简的内置 skill 集
     if (template.skills?.entries) {
       if (!running.skills) running.skills = {};
       if (!running.skills.entries) running.skills.entries = {};
       for (const [name, entry] of Object.entries(template.skills.entries)) {
         running.skills.entries[name] = entry;
+        changed = true;
       }
     }
 
-    fs.writeFileSync('$CONFIG_PATH', JSON.stringify(running, null, 2) + '\n');
+    // 规范 Feishu 多账号配置：将顶层 single-account 字段下沉到 accounts.*
+    // 避免启动时触发 Doctor 迁移提示：
+    // \"Moved channels.feishu single-account top-level values into channels.feishu.accounts.default.\"
+    const feishu = running.channels?.feishu;
+    if (feishu && typeof feishu === 'object' && !Array.isArray(feishu)) {
+      const accounts = feishu.accounts;
+      if (accounts && typeof accounts === 'object' && !Array.isArray(accounts)) {
+        const accountEntries = Object.entries(accounts);
+        if (accountEntries.length > 0) {
+          const keysToMove = ['dmPolicy', 'allowFrom', 'groupPolicy', 'groupAllowFrom', 'defaultTo'];
+          const topLevelValues = {};
+          for (const key of keysToMove) {
+            if (feishu[key] !== undefined) topLevelValues[key] = feishu[key];
+          }
+          if (Object.keys(topLevelValues).length > 0) {
+            const nextAccounts = {};
+            for (const [accountId, rawAccount] of accountEntries) {
+              const account =
+                rawAccount && typeof rawAccount === 'object' && !Array.isArray(rawAccount)
+                  ? { ...rawAccount }
+                  : {};
+              for (const [key, value] of Object.entries(topLevelValues)) {
+                if (account[key] === undefined) account[key] = clone(value);
+              }
+              nextAccounts[accountId] = account;
+            }
+            for (const key of Object.keys(topLevelValues)) {
+              delete feishu[key];
+            }
+            feishu.accounts = nextAccounts;
+            changed = true;
+          }
+        }
+      }
+    }
+
+    if (changed) {
+      fs.writeFileSync('$CONFIG_PATH', JSON.stringify(running, null, 2) + '\n');
+    }
   "
   echo "📝 Skills configuration synchronized"
 fi

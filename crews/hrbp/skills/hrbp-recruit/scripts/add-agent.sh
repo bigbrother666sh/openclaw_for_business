@@ -1,6 +1,10 @@
 #!/bin/bash
 # add-agent.sh - 注册新 Agent 到 openclaw.json
 # 用法: bash ./skills/hrbp-recruit/scripts/add-agent.sh <agent-id> [--bind <channel>:<accountId>] [--builtin-skills <skill1,skill2|all>]
+# skill 规则：
+#   - 默认基线技能（OFB 全局）始终生效
+#   - --builtin-skills / BUILTIN_SKILLS 用于在基线上追加技能（非替换）
+#   - DENIED_SKILLS 最终裁剪
 set -e
 
 OPENCLAW_HOME="$HOME/.openclaw"
@@ -15,7 +19,7 @@ usage() {
   echo ""
   echo "Options:"
   echo "  --bind <channel>:<accountId>  Bind agent to a channel (Mode B direct routing)"
-  echo "  --builtin-skills <skills>     Enable bundled skills for this agent (comma-separated)"
+  echo "  --builtin-skills <skills>     Additional bundled skills on top of OFB baseline (comma-separated)"
   echo ""
   echo "Examples:"
   echo "  $0 developer"
@@ -31,6 +35,23 @@ split_skill_tokens() {
     | tr ',' '\n' \
     | sed 's/^[[:space:]]*//; s/[[:space:]]*$//' \
     | awk 'NF'
+}
+
+list_default_global_skill_names() {
+  cat <<'EOF'
+1password
+healthcheck
+model-usage
+nano-pdf
+skill-creator
+ordercli
+session-logs
+tmux
+weather
+xurl
+video-frames
+self-improving
+EOF
 }
 
 list_workspace_skill_names() {
@@ -122,17 +143,17 @@ resolve_denied_skill_names() {
   split_skill_tokens "$(cat "$denied_file")"
 }
 
-resolve_enabled_bundled_skill_names() {
+resolve_additional_bundled_skill_names() {
   local raw_tokens="$1"
   local bundled_dir="$2"
-  local available=""
-  available="$(list_bundled_skill_names "$bundled_dir")"
   local tokens=""
   tokens="$(split_skill_tokens "$raw_tokens")"
 
   [ -n "$tokens" ] || return 0
 
   if printf '%s\n' "$tokens" | grep -Eiq '^(all|\*)$'; then
+    local available=""
+    available="$(list_bundled_skill_names "$bundled_dir")"
     if [ -n "$available" ]; then
       printf '%s\n' "$available"
       return
@@ -143,60 +164,41 @@ resolve_enabled_bundled_skill_names() {
 
   while IFS= read -r token; do
     [ -n "$token" ] || continue
-    if [ -n "$available" ]; then
-      if printf '%s\n' "$available" | grep -Fxq "$token"; then
-        printf '%s\n' "$token"
-      else
-        echo "  ⚠️  Unknown bundled skill '$token', ignoring" >&2
-      fi
-    else
-      printf '%s\n' "$token"
-    fi
+    printf '%s\n' "$token"
   done <<< "$tokens"
 }
 
-build_whitelist_skills_json() {
+build_agent_skills_json() {
   local workspace_dir="$1"
   local bundled_raw="$2"
-  local bundled_dir="$3"
+  local denied_names="$3"
+  local bundled_dir="$4"
 
-  local workspace_skills=""
-  workspace_skills="$(list_workspace_skill_names "$workspace_dir")"
-  local bundled_skills=""
-  bundled_skills="$(resolve_enabled_bundled_skill_names "$bundled_raw" "$bundled_dir")"
+  local baseline_bundled=""
+  baseline_bundled="$(list_default_global_skill_names)"
+  local additional_bundled=""
+  additional_bundled="$(resolve_additional_bundled_skill_names "$bundled_raw" "$bundled_dir")"
 
-  printf '%s\n%s\n' "$workspace_skills" "$bundled_skills" \
-    | awk 'NF && !seen[$0]++' \
-    | node -e '
-const fs = require("fs");
-const lines = fs.readFileSync(0, "utf8")
-  .split(/\r?\n/)
-  .map((line) => line.trim())
-  .filter(Boolean);
-console.log(JSON.stringify(Array.from(new Set(lines))));
-'
-}
+  local merged_bundled=""
+  merged_bundled="$(printf '%s\n%s\n' "$baseline_bundled" "$additional_bundled" \
+    | awk 'NF && !seen[$0]++')"
 
-build_denied_filter_skills_json() {
-  local workspace_dir="$1"
-  local denied_names="$2"
-  local bundled_dir="$3"
-
-  local enabled_bundled_skills=""
-  enabled_bundled_skills="$(list_bundled_skill_names "$bundled_dir")"
-
-  local allowed_bundled_skills=""
-  while IFS= read -r skill; do
-    [ -n "$skill" ] || continue
-    if ! printf '%s\n' "$denied_names" | grep -Fxq "$skill"; then
-      allowed_bundled_skills="$allowed_bundled_skills"$'\n'"$skill"
-    fi
-  done <<< "$enabled_bundled_skills"
+  local allowed_bundled=""
+  if [ -n "$denied_names" ]; then
+    while IFS= read -r skill; do
+      [ -n "$skill" ] || continue
+      if ! printf '%s\n' "$denied_names" | grep -Fxq "$skill"; then
+        allowed_bundled="$allowed_bundled"$'\n'"$skill"
+      fi
+    done <<< "$merged_bundled"
+  else
+    allowed_bundled="$merged_bundled"
+  fi
 
   local workspace_skills=""
   workspace_skills="$(list_workspace_skill_names "$workspace_dir")"
 
-  printf '%s\n%s\n' "$allowed_bundled_skills" "$workspace_skills" \
+  printf '%s\n%s\n' "$allowed_bundled" "$workspace_skills" \
     | awk 'NF && !seen[$0]++' \
     | node -e '
 const fs = require("fs");
@@ -254,17 +256,25 @@ BUNDLED_SKILLS_DIR="$(find_bundled_skills_dir)"
 DENIED_FILE="$WORKSPACE/DENIED_SKILLS"
 DENIED_NAMES="$(resolve_denied_skill_names "$DENIED_FILE")"
 SKILLS_JSON="[]"
-WRITE_SKILLS_FIELD="false"
-SKILLS_MODE="inherit-all-enabled"
+SKILLS_MODE="baseline-default"
 
+SKILLS_JSON="$(build_agent_skills_json \
+  "$WORKSPACE" \
+  "$BUILTIN_SKILLS_RAW" \
+  "$DENIED_NAMES" \
+  "$BUNDLED_SKILLS_DIR")"
+
+HAS_ADDITIONAL_BUILTINS="false"
 if [ -n "$(split_skill_tokens "$BUILTIN_SKILLS_RAW")" ]; then
-  SKILLS_JSON="$(build_whitelist_skills_json "$WORKSPACE" "$BUILTIN_SKILLS_RAW" "$BUNDLED_SKILLS_DIR")"
-  WRITE_SKILLS_FIELD="true"
-  SKILLS_MODE="explicit-whitelist"
+  HAS_ADDITIONAL_BUILTINS="true"
+fi
+
+if [ "$HAS_ADDITIONAL_BUILTINS" = "true" ] && [ -n "$DENIED_NAMES" ]; then
+  SKILLS_MODE="baseline-plus-additional-minus-denied"
+elif [ "$HAS_ADDITIONAL_BUILTINS" = "true" ]; then
+  SKILLS_MODE="baseline-plus-additional"
 elif [ -n "$DENIED_NAMES" ]; then
-  SKILLS_JSON="$(build_denied_filter_skills_json "$WORKSPACE" "$DENIED_NAMES" "$BUNDLED_SKILLS_DIR")"
-  WRITE_SKILLS_FIELD="true"
-  SKILLS_MODE="deny-filter"
+  SKILLS_MODE="baseline-minus-denied"
 fi
 
 # 验证 openclaw.json 存在
@@ -286,11 +296,10 @@ fi
 echo "📦 Adding agent: $AGENT_ID"
 
 # 更新 openclaw.json
-AGENT_ID="$AGENT_ID" BIND_CHANNEL="$BIND_CHANNEL" BIND_ACCOUNT="$BIND_ACCOUNT" CONFIG_PATH="$CONFIG_PATH" SKILLS_JSON="$SKILLS_JSON" WRITE_SKILLS_FIELD="$WRITE_SKILLS_FIELD" node -e "
+AGENT_ID="$AGENT_ID" BIND_CHANNEL="$BIND_CHANNEL" BIND_ACCOUNT="$BIND_ACCOUNT" CONFIG_PATH="$CONFIG_PATH" SKILLS_JSON="$SKILLS_JSON" node -e "
   const fs = require('fs');
   const c = JSON.parse(fs.readFileSync(process.env.CONFIG_PATH, 'utf8'));
   const agentSkills = JSON.parse(process.env.SKILLS_JSON || '[]');
-  const writeSkills = process.env.WRITE_SKILLS_FIELD === 'true';
   const agentId = process.env.AGENT_ID;
 
   // 1. 添加到 agents.list
@@ -300,10 +309,8 @@ AGENT_ID="$AGENT_ID" BIND_CHANNEL="$BIND_CHANNEL" BIND_ACCOUNT="$BIND_ACCOUNT" C
     id: agentId,
     name: agentId,
     workspace: '~/.openclaw/workspace-' + agentId,
+    skills: agentSkills,
   };
-  if (writeSkills) {
-    newAgent.skills = agentSkills;
-  }
   c.agents.list.push(newAgent);
 
   // 2. 更新 Main Agent 的 allowAgents
@@ -334,14 +341,17 @@ AGENT_ID="$AGENT_ID" BIND_CHANNEL="$BIND_CHANNEL" BIND_ACCOUNT="$BIND_ACCOUNT" C
 echo "  ✅ Added to agents.list"
 echo "  ✅ Updated Main Agent allowAgents"
 case "$SKILLS_MODE" in
-  inherit-all-enabled)
-    echo "  ✅ Skill scope: inherit all enabled global skills + workspace skills (no per-agent filter)"
+  baseline-default)
+    echo "  ✅ Skill scope: OFB baseline bundled skills + workspace skills"
     ;;
-  deny-filter)
-    echo "  ✅ Skill scope: DENIED_SKILLS applied (enabled global skills minus denied + workspace skills)"
+  baseline-minus-denied)
+    echo "  ✅ Skill scope: baseline bundled skills - DENIED_SKILLS + workspace skills"
     ;;
-  explicit-whitelist)
-    echo "  ✅ Skill scope: explicit builtin whitelist + workspace skills"
+  baseline-plus-additional)
+    echo "  ✅ Skill scope: baseline bundled skills + additional bundled skills + workspace skills"
+    ;;
+  baseline-plus-additional-minus-denied)
+    echo "  ✅ Skill scope: baseline bundled skills + additional bundled skills - DENIED_SKILLS + workspace skills"
     ;;
 esac
 

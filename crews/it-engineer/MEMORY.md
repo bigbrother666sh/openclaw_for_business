@@ -60,6 +60,51 @@ openclaw_for_business/
 
 ---
 
+## AWADA Extension 知识（运维必备）
+
+### AWADA 是什么（定义与适用场景）
+- `awada-server` 是部署在公网服务器的中转服务，解决“本地 OpenClaw 无固定公网 IP”但仍需接入第三方消息平台 webhook 的问题。
+- `awada-extension` 是本地 OpenClaw 的 channel 插件，通过 Redis Streams 与 awada-server 双向通信。
+- 典型场景：
+  - WorkTool / QiweAPI 等要求固定公网回调地址
+  - 多渠道统一接入后分发给不同 OpenClaw 实例
+  - 企业希望 remote→local 全链路 self-host
+
+### AWADA 架构要点
+- 上行链路：
+  - 用户消息 -> WorkTool/QiweAPI webhook -> awada-server -> `awada:events:inbound:<lane>` -> awada-extension -> OpenClaw agent
+- 下行链路：
+  - OpenClaw agent 回复 -> `awada:events:outbound:<lane>` -> awada-server -> 用户侧平台
+- 核心组件职责：
+  - `awada-server`：接 webhook、写 inbound stream、消费 outbound 并回发
+  - `Redis`：事件总线（按 lane 分流）
+  - `awada-extension`：订阅 inbound、提交 outbound
+
+### 本地 channel 配置（openclaw.json）
+- 配置入口：`channels.awada`
+- 最小必填项：
+  - `enabled: true`
+  - `redisUrl`
+  - `lane`（单实例只绑定一个 lane，通常 `user` 或 `admin`）
+  - `platform`（需与 awada-server 端 `BOT_N_PLATFORM` 对齐）
+- 常用可选项：
+  - `consumerGroup`（默认 `openclaw`）
+  - `consumerName`（多实例需唯一）
+  - `dmPolicy` / `allowFrom`
+  - `maxRetries` / `blockTimeMs` / `batchSize`
+- Redis URL 示例：
+  - `redis://HOST:PORT/DB`
+  - `redis://:PASSWORD@HOST:PORT/DB`
+
+### AWADA 排障检查单
+1. awada-server 进程是否存活（pm2 / systemd）
+2. Redis 连通性是否正常（公网访问、密码、db）
+3. webhook 回调地址是否与平台后台配置一致
+4. openclaw `channels.awada` 的 `lane/platform` 是否与服务端 bot 配置匹配
+5. Channel 状态是否显示 connected，消息是否能完成收发闭环
+
+---
+
 ## 如何更新 OFB 系统
 
 ### 升级命令

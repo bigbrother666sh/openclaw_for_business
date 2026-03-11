@@ -152,7 +152,7 @@
       "eightctl": { "enabled": false },
       "mcporter": { "enabled": false },
       "oracle": { "enabled": false },
-      "ordercli": { "enabled": false },
+      "ordercli": { "enabled": true },
       "sag": { "enabled": false }
     }
   },
@@ -161,9 +161,6 @@
       "enabled": true,
       "domain": "feishu",
       "connectionMode": "websocket",
-      "dmPolicy": "open",
-      "allowFrom": ["*"],
-      "groupPolicy": "allowlist",
       "requireMention": true,
       "streaming": true,
       "tools": {
@@ -176,16 +173,25 @@
       "accounts": {
         "main-bot": {
           "name": "Main Bot",
+          "dmPolicy": "open",
+          "allowFrom": ["*"],
+          "groupPolicy": "allowlist",
           "appId": "",
           "appSecret": ""
         },
         "hrbp-bot": {
           "name": "HRBP Bot",
+          "dmPolicy": "open",
+          "allowFrom": ["*"],
+          "groupPolicy": "allowlist",
           "appId": "",
           "appSecret": ""
         },
         "it-engineer-bot": {
           "name": "IT Engineer Bot",
+          "dmPolicy": "open",
+          "allowFrom": ["*"],
+          "groupPolicy": "allowlist",
           "appId": "",
           "appSecret": ""
         }

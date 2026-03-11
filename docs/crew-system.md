@@ -111,10 +111,11 @@ skills/                    # 全局共享技能（项目根目录，所有 Agent
 | 全局共享 | `skills/`（项目根目录） | `openclaw/skills/` | 所有 Agent |
 | 模板专属 | `crews/<template>/skills/` | `~/.openclaw/workspace-<instance>/skills/` | 仅该实例 |
 
-默认策略：
-- 非 IT 类模板默认带 `DENIED_SKILLS`（`github`/`gh-issues`/`coding-agent`）
-- IT Engineer 模板不屏蔽这三项
-- 实例可按需修改自身 `DENIED_SKILLS`
+默认策略（OFB）：
+- 每个 Agent 默认使用固定基线 bundled skills：
+  `1password`、`healthcheck`、`model-usage`、`nano-pdf`、`skill-creator`、`ordercli`、`session-logs`、`tmux`、`weather`、`xurl`、`video-frames`、`self-improving`
+- `BUILTIN_SKILLS` 用于在基线上追加额外 bundled skills（例如 `github` / `gh-issues` / `coding-agent`）
+- `DENIED_SKILLS` 作为最终裁剪层（从“基线 + 追加”里减掉指定 skills）
 
 ## 核心组件
 
@@ -161,7 +162,7 @@ Crew 实例有三种创建方式：
 
 可选文件：
 - `DENIED_SKILLS` — 屏蔽的内置 skill 列表
-- `BUILTIN_SKILLS` — 推荐随实例安装的 skill
+- `BUILTIN_SKILLS` — 在 OFB 基线之上追加的 bundled skills
 - `skills/` — 模板/实例专属技能目录
 
 ## 共享协议
@@ -186,7 +187,7 @@ Crew 实例有三种创建方式：
 Agent 实例配置在 `~/.openclaw/openclaw.json` 中（仅使用上游原生字段）：
 
 - `agents.list[]` — 实例列表（id、name、workspace、subagents）
-- `agents.list[].skills` — 实例 skill 白名单（有 DENIED_SKILLS 时自动计算）
+- `agents.list[].skills` — 实例 skill 白名单（始终写入：基线 + 追加 - denied + workspace skills）
 - `bindings[]` — 渠道绑定（模式 B 直连）
 - `TEAM_DIRECTORY.md` — 基于 `agents.list[]` + `bindings[]` 的实时通讯录
 

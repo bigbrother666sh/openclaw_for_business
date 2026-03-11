@@ -70,7 +70,7 @@ node -e "const c=require(process.env.HOME+'/.openclaw/openclaw.json'); console.l
 # 手动安装/重装 Agent 系统
 ./scripts/setup-crew.sh
 ./scripts/setup-crew.sh --force  # 覆盖已有 workspace
-./scripts/setup-crew.sh --builtin-skills hrbp:browser-guide  # 覆盖指定 agent 的内置 skill
+./scripts/setup-crew.sh --denied-skills hrbp:github,gh-issues  # 覆盖指定 agent 的屏蔽 skill
 ```
 
 建议通过 HRBP 对话执行 Agent 生命周期操作（新增/调岗/移除），由 HRBP skill 内部脚本处理注册与绑定。
@@ -81,6 +81,7 @@ node -e "const c=require(process.env.HOME+'/.openclaw/openclaw.json'); console.l
 # 新增 Agent（workspace 已存在）
 bash ~/.openclaw/workspace-hrbp/skills/hrbp-recruit/scripts/add-agent.sh <agent-id>
 bash ~/.openclaw/workspace-hrbp/skills/hrbp-recruit/scripts/add-agent.sh <agent-id> --builtin-skills browser-guide,summarize
+# 说明：--builtin-skills 是在 OFB 基线技能上“追加”，不是替换
 
 # 修改绑定
 bash ~/.openclaw/workspace-hrbp/skills/hrbp-modify/scripts/modify-agent.sh <agent-id> --bind wechat:wx_xxx
