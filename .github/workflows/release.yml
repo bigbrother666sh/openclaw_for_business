@@ -49,6 +49,10 @@ jobs:
             minor=$((minor + 1)); patch=0
           else
             patch=$((patch + 1))
+            # patch 达到 10 时自动进位到 minor（10 次补丁 = 中等更新）
+            if [ "$patch" -ge 10 ]; then
+              minor=$((minor + 1)); patch=0
+            fi
           fi
 
           NEW_VERSION="v${major}.${minor}.${patch}"
