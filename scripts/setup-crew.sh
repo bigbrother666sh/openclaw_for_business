@@ -236,6 +236,22 @@ echo "  ✅ Template library synced to $TEMPLATE_DEST"
 if [ -f "$CONFIG_PATH" ]; then
   echo "  📝 Merging agent config into openclaw.json..."
 
+  # 规范化所有 agent workspace 路径：将 ~ 开头的路径转为绝对路径
+  # 修复已存在的 ~ 路径，避免 macOS app 环境中 HOME 展开异常导致 mkdir '/Users' 报错
+  OPENCLAW_HOME="$OPENCLAW_HOME" node -e "
+    const fs = require('fs');
+    const c = JSON.parse(fs.readFileSync('$CONFIG_PATH', 'utf8'));
+    const openclawHome = process.env.OPENCLAW_HOME || (process.env.HOME + '/.openclaw');
+    let changed = false;
+    for (const agent of (c.agents?.list || [])) {
+      if (typeof agent.workspace === 'string' && agent.workspace.startsWith('~/')) {
+        agent.workspace = openclawHome + agent.workspace.slice('~/.openclaw'.length);
+        changed = true;
+      }
+    }
+    if (changed) fs.writeFileSync('$CONFIG_PATH', JSON.stringify(c, null, 2) + '\n');
+  " && echo "  ✅ Agent workspace paths normalized (~ → absolute)"
+
   MAIN_OVERRIDE="$(resolve_denied_override_for_agent "main")"
   HRBP_OVERRIDE="$(resolve_denied_override_for_agent "hrbp")"
   IT_OVERRIDE="$(resolve_denied_override_for_agent "it-engineer")"
@@ -271,9 +287,11 @@ if [ -f "$CONFIG_PATH" ]; then
     "$PROJECT_ROOT" \
     "$OPENCLAW_HOME")"
 
-  MAIN_SKILLS_RESULT="$MAIN_SKILLS_RESULT" HRBP_SKILLS_RESULT="$HRBP_SKILLS_RESULT" IT_SKILLS_RESULT="$IT_SKILLS_RESULT" node -e "
+  MAIN_SKILLS_RESULT="$MAIN_SKILLS_RESULT" HRBP_SKILLS_RESULT="$HRBP_SKILLS_RESULT" IT_SKILLS_RESULT="$IT_SKILLS_RESULT" OPENCLAW_HOME="$OPENCLAW_HOME" node -e "
     const fs = require('fs');
     const c = JSON.parse(fs.readFileSync('$CONFIG_PATH', 'utf8'));
+    // 使用绝对路径而非 ~，避免 macOS app 环境中 HOME 展开异常
+    const openclawHome = process.env.OPENCLAW_HOME || (process.env.HOME + '/.openclaw');
 
     const applySkills = (entry, skillsResult) => {
       return { ...entry, skills: JSON.parse((skillsResult || '[]').trim() || '[]') };
@@ -298,7 +316,7 @@ if [ -f "$CONFIG_PATH" ]; then
         id: 'main',
         default: prev.default ?? true,
         name: prev.name || 'Main Agent',
-        workspace: prev.workspace || '~/.openclaw/workspace-main',
+        workspace: prev.workspace || openclawHome + '/workspace-main',
         subagents: {
           ...(prev.subagents || {}),
           allowAgents: mergedAllowAgents,
@@ -312,7 +330,7 @@ if [ -f "$CONFIG_PATH" ]; then
         ...prev,
         id: 'hrbp',
         name: prev.name || 'HRBP',
-        workspace: prev.workspace || '~/.openclaw/workspace-hrbp',
+        workspace: prev.workspace || openclawHome + '/workspace-hrbp',
       };
       return applySkills(base, process.env.HRBP_SKILLS_RESULT);
     });
@@ -322,7 +340,7 @@ if [ -f "$CONFIG_PATH" ]; then
         ...prev,
         id: 'it-engineer',
         name: prev.name || 'IT Engineer',
-        workspace: prev.workspace || '~/.openclaw/workspace-it-engineer',
+        workspace: prev.workspace || openclawHome + '/workspace-it-engineer',
       };
       return applySkills(base, process.env.IT_SKILLS_RESULT);
     });
@@ -354,7 +372,42 @@ else
   echo "     Will be created on first start (dev.sh / reinstall-daemon.sh)"
 fi
 
-# ─── 5. 完成 ──────────────────────────────────────────────────────
+# ─── 5. 写入 OFB_ENV.md（始终覆盖，让 Agent 知道项目路径） ──────
+IT_ENGINEER_WORKSPACE="$OPENCLAW_HOME/workspace-it-engineer"
+if [ -d "$IT_ENGINEER_WORKSPACE" ]; then
+  cat > "$IT_ENGINEER_WORKSPACE/OFB_ENV.md" << ENVEOF
+# OFB 环境信息（由 setup-crew.sh 自动生成，勿手动编辑）
+
+- **OFB 项目路径**：$PROJECT_ROOT
+- **openclaw 子目录**：$PROJECT_ROOT/openclaw
+- **配置文件**：$OPENCLAW_HOME/openclaw.json
+
+## 常用操作命令
+
+\`\`\`bash
+# 开发模式启动
+cd $PROJECT_ROOT && ./scripts/dev.sh gateway
+
+# 重新同步 crew 配置（幂等）
+cd $PROJECT_ROOT && ./scripts/setup-crew.sh
+
+# 重新应用 addons
+cd $PROJECT_ROOT && ./scripts/apply-addons.sh
+
+# 生产模式重装后台服务
+cd $PROJECT_ROOT && ./scripts/reinstall-daemon.sh
+
+# 升级 OFB 系统（须确认系统空闲）
+cd $PROJECT_ROOT && ./scripts/update-upstream.sh
+
+# 直接调用上游 CLI（如需）
+cd $PROJECT_ROOT/openclaw && pnpm openclaw <subcommand>
+\`\`\`
+ENVEOF
+  echo "  ✅ OFB_ENV.md updated in workspace-it-engineer"
+fi
+
+# ─── 6. 完成 ──────────────────────────────────────────────────────
 echo ""
 echo "✅ Agent System installed!"
 echo ""

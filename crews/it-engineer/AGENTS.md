@@ -59,8 +59,8 @@
 
 定期或在升级/重启前运行：
 ```bash
-# 检查 openclaw 进程
-ps aux | grep openclaw
+# 检查 openclaw 进程是否存活（注意：grep 的是 openclaw.mjs，不是 openclaw 命令）
+ps aux | grep openclaw.mjs | grep -v grep
 
 # 查看最近日志（如果使用 pm2 管理）
 pm2 logs openclaw --lines 50

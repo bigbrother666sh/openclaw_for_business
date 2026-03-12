@@ -373,11 +373,13 @@ fi
 echo "📦 Adding agent: $AGENT_ID"
 
 # 更新 openclaw.json
-AGENT_ID="$AGENT_ID" BIND_CHANNEL="$BIND_CHANNEL" BIND_ACCOUNT="$BIND_ACCOUNT" CONFIG_PATH="$CONFIG_PATH" SKILLS_JSON="$SKILLS_JSON" node -e "
+AGENT_ID="$AGENT_ID" BIND_CHANNEL="$BIND_CHANNEL" BIND_ACCOUNT="$BIND_ACCOUNT" CONFIG_PATH="$CONFIG_PATH" SKILLS_JSON="$SKILLS_JSON" OPENCLAW_HOME="$OPENCLAW_HOME" node -e "
   const fs = require('fs');
   const c = JSON.parse(fs.readFileSync(process.env.CONFIG_PATH, 'utf8'));
   const agentSkills = JSON.parse(process.env.SKILLS_JSON || '[]');
   const agentId = process.env.AGENT_ID;
+  // 使用绝对路径而非 ~，避免 macOS app 环境中 HOME 展开异常
+  const openclawHome = process.env.OPENCLAW_HOME || (process.env.HOME + '/.openclaw');
 
   // 1. 添加到 agents.list
   if (!c.agents) c.agents = {};
@@ -385,7 +387,7 @@ AGENT_ID="$AGENT_ID" BIND_CHANNEL="$BIND_CHANNEL" BIND_ACCOUNT="$BIND_ACCOUNT" C
   const newAgent = {
     id: agentId,
     name: agentId,
-    workspace: '~/.openclaw/workspace-' + agentId,
+    workspace: openclawHome + '/workspace-' + agentId,
     skills: agentSkills,
   };
   c.agents.list.push(newAgent);
