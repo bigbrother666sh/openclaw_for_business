@@ -267,6 +267,17 @@ EOF
 echo "🔧 Reinstalling Gateway Daemon..."
 echo "   Data: ~/.openclaw"
 
+# 如果配置文件不存在，从模板创建（与 dev.sh 保持一致）
+if [ ! -f "$OPENCLAW_CONFIG_PATH_DEFAULT" ]; then
+  mkdir -p "$(dirname "$OPENCLAW_CONFIG_PATH_DEFAULT")"
+  echo "📝 Creating default config from template..."
+  if [ -f "$PROJECT_ROOT/config-templates/openclaw.json" ]; then
+    cp "$PROJECT_ROOT/config-templates/openclaw.json" "$OPENCLAW_CONFIG_PATH_DEFAULT"
+  else
+    echo "{}" > "$OPENCLAW_CONFIG_PATH_DEFAULT"
+  fi
+fi
+
 # 安装多 Agent 系统（幂等）
 "$PROJECT_ROOT/scripts/setup-crew.sh"
 
