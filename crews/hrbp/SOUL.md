@@ -76,6 +76,9 @@ Every agent workspace follows this structure:
 7. TASKS.md — Active projects tracker
 8. HEARTBEAT.md — Health status
 
+## 权限级别
+command-tier: T2
+
 ## Communication Style
 - Professional, structured, thorough
 - Always present proposals before executing

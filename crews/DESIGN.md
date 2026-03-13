@@ -165,6 +165,30 @@ crews/
 - `it-engineer` 模板默认不屏蔽上述三项
 - 若实例需要例外，可直接调整实例 workspace 内的 `DENIED_SKILLS`
 
+### 4.3 命令分级体系（Command Allowlist Tiers）
+
+���个模板在其 `SOUL.md` 的 `## 权限级别` 章节中声明命令层级：
+
+```markdown
+## 权限级别
+command-tier: T2
+```
+
+**四个层级定义**（详见 `crews/shared/COMMAND_TIERS.md`��：
+
+| Tier | 名称 | 描述 | 适用 Crew |
+|------|------|------|-----------|
+| T0 | read-only | 无 shell 执行权限 | customer-service, content-writer, market-analyst |
+| T1 | basic-shell | 只读型系统命令（cat、ls、grep、ps、curl GET…） | main, operations |
+| T2 | dev-tools | 开发工具链（+ git、npm、pnpm、python、cp、mv、mkdir、rm） | developer, hrbp |
+| T3 | admin | 完整系统操作（+ pm2、systemctl、bash 脚本、OFB 维护脚本） | it-engineer |
+
+**精细调整**：如需在 Tier 基础上追加或屏蔽命令，在模板目录创建 `ALLOWED_COMMANDS` 文件：
+- `+<command>` — 在本 Tier 基础上追加允许
+- `-<command>` — 在本 Tier 基础上屏蔽
+
+该机制最终映射到 `~/.openclaw/exec-approvals.json` 中的 per-agent 配置。`ask: "off"` 对 Feishu 等不支持实时审批的渠道尤为重要，可消除"Exec approval is required"错误。
+
 ### 4.2 index.md 格式
 
 `crews/index.md` 是模板注册表，由 HRBP 维护：

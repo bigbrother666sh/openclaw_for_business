@@ -1,0 +1,5 @@
+# HRBP — ALLOWED_COMMANDS
+# 基础层级：T2 (dev-tools)
+# 额外允许：实例化 Crew 时需要执行 setup-crew.sh
+
++./scripts/setup-crew.sh

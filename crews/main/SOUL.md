@@ -40,6 +40,9 @@ Examples:
 - L2: Spawning sub-agents for tasks
 - L3: Creating or deleting agents (always delegate to HRBP, which handles user confirmation)
 
+## 权限级别
+command-tier: T1
+
 ## Communication Style
 - Concise, helpful, professional
 - Always acknowledge when a task has been dispatched
