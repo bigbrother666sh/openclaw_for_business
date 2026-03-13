@@ -60,7 +60,7 @@
   },
   "agents": {
     "defaults": {
-      "thinkingDefault": "low",
+      "thinkingDefault": "medium",
       "model": {
         "primary": "siliconflow/Pro/MiniMaxAI/MiniMax-M2.5",
         "fallbacks": [
@@ -101,6 +101,13 @@
         ],
         "subagents": {
           "allowAgents": ["main", "hrbp", "it-engineer"]
+        },
+        "tools": {
+          "exec": {
+            "host": "gateway",
+            "security": "allowlist",
+            "ask": "off"
+          }
         }
       },
       {
@@ -128,7 +135,14 @@
           "hrbp-recruit",
           "hrbp-remove",
           "hrbp-usage"
-        ]
+        ],
+        "tools": {
+          "exec": {
+            "host": "gateway",
+            "security": "allowlist",
+            "ask": "off"
+          }
+        }
       },
       {
         "id": "it-engineer",
@@ -153,7 +167,14 @@
           "browser-guide",
           "rss-reader",
           "smart-search"
-        ]
+        ],
+        "tools": {
+          "exec": {
+            "host": "gateway",
+            "security": "full",
+            "ask": "off"
+          }
+        }
       }
     ]
   },

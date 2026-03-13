@@ -16,6 +16,7 @@ BUILTIN_CREWS="main hrbp it-engineer"
 SYNC_TEAM_DIRECTORY_SCRIPT="$CREWS_DIR/hrbp/skills/hrbp-common/scripts/sync-team-directory.sh"
 
 source "$SCRIPT_DIR/lib/agent-skills.sh"
+source "$SCRIPT_DIR/lib/exec-tiers.sh"
 
 DENIED_OVERRIDES=""
 
@@ -386,6 +387,11 @@ if [ -f "$CONFIG_PATH" ]; then
   done <<< "$AGENT_IDS"
   echo "  ✅ Agent skill filters synchronized"
   echo "  ✅ openclaw.json updated"
+
+  # ─── 4b. 应用 Command Tier → exec-approvals + tools.exec ──────
+  echo "  📝 Applying command tier exec policies..."
+  EXEC_APPROVALS_PATH="$OPENCLAW_HOME/exec-approvals.json"
+  apply_exec_tiers "$CONFIG_PATH" "$EXEC_APPROVALS_PATH" "$CREWS_DIR" "$PROJECT_ROOT" "$BUILTIN_CREWS"
 else
   echo "  ⚠️  openclaw.json not found at $CONFIG_PATH"
   echo "     Will be created on first start (dev.sh / reinstall-daemon.sh)"

@@ -96,7 +96,9 @@ Global skills are listed in `~/.openclaw/GLOBAL_SHARED_SKILLS` after `apply-addo
 
 ### Required: Declare a Command Tier
 
-Every crew template **must** declare a command tier in its `SOUL.md`. This maps directly to the agent's allowed shell command set and is used to generate the `exec-approvals.json` configuration.
+Every crew template **must** declare a command tier in its `SOUL.md`. `setup-crew.sh` reads this declaration and automatically generates:
+1. `agents.list[].tools.exec` in `openclaw.json` (per-agent security/ask policy)
+2. `~/.openclaw/exec-approvals.json` entries (per-agent command allowlists with resolved binary paths)
 
 Add this section to `SOUL.md` (before or after `## Communication Style`):
 
@@ -107,12 +109,12 @@ command-tier: T1
 
 **The four tiers** (see `crews/shared/COMMAND_TIERS.md` for the full command lists):
 
-| Tier | Name | Allowed Commands | Typical Crew Type |
-|------|------|------------------|-------------------|
-| `T0` | read-only | No shell execution | Customer service, content creation, research |
-| `T1` | basic-shell | Read-only system commands: `cat`, `ls`, `grep`, `ps`, `curl` (GET only), … | Coordination, operations |
-| `T2` | dev-tools | T1 + `git`, `npm`, `pnpm`, `node`, `python`, `cp`, `mv`, `mkdir`, `rm`, … | Development, automation |
-| `T3` | admin | T2 + `pm2`, `systemctl`, arbitrary bash scripts, OFB maintenance scripts | Infrastructure, sysops |
+| Tier | Name | Exec Policy | Typical Crew Type |
+|------|------|-------------|-------------------|
+| `T0` | read-only | `security: deny` — no shell execution | Customer service, content creation, research |
+| `T1` | basic-shell | `security: allowlist` — read-only commands: `cat`, `ls`, `grep`, `ps`, `curl` (GET only), … | Coordination, operations |
+| `T2` | dev-tools | `security: allowlist` — T1 + `git`, `npm`, `pnpm`, `node`, `python`, `cp`, `mv`, `mkdir`, `rm`, … | Development, automation |
+| `T3` | admin | `security: full` — unrestricted shell access | Infrastructure, sysops |
 
 Choose the **minimum tier** that the role genuinely needs. When in doubt, go lower — HRBP or the user can grant additional permissions after deployment.
 
@@ -126,7 +128,7 @@ To add or remove commands relative to the base tier, create an `ALLOWED_COMMANDS
 -rm
 ```
 
-These adjustments are applied on top of the tier's base allowlist when the agent is registered.
+These adjustments are applied on top of the tier's base allowlist and reflected in `exec-approvals.json` automatically.
 
 ### Instantiation Behavior
 
