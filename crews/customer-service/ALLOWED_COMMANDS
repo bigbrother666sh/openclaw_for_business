@@ -1,0 +1,5 @@
+# customer-service ALLOWED_COMMANDS
+# 在 T0 基础上精确放行 SQLite 封装脚本
+# 格式：+<command> 追加允许（相对于 workspace 根目录）
+
++./skills/customer-db/scripts/db.sh

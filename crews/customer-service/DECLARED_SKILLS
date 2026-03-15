@@ -8,3 +8,6 @@ xurl
 
 # MCP 服务接入（支付宝支付 MCP Server）
 mcporter
+
+# 客户数据库（SQLite，schema 由 HRBP 在招募时定义）
+customer-db

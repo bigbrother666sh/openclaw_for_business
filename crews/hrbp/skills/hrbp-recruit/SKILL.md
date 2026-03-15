@@ -38,8 +38,41 @@ After user confirms the proposal:
 2. Copy template files as starting point
 3. Apply instance-specific customizations (name, role tuning, etc.)
 4. Create optional skill config file:
-   - `BUILTIN_SKILLS` — one bundled skill per line（表示“在 OFB 基线技能之外追加”）
+   - `BUILTIN_SKILLS` — one bundled skill per line（表示”在 OFB 基线技能之外追加”）
 5. Copy shared protocols (`RULES.md`, `TEMPLATES.md`) into the workspace
+6. **[If template uses `customer-db` skill]** Initialize the customer database:
+   - Ask the user to define the database schema (tables, fields, types)
+   - Write the schema to `~/.openclaw/workspace-<instance-id>/db/schema.sql`
+   - Run the initialization script from the workspace directory:
+     ```
+     cd ~/.openclaw/workspace-<instance-id>
+     bash ./skills/customer-db/scripts/db.sh init
+     ```
+   - Confirm tables were created successfully:
+     ```
+     bash ./skills/customer-db/scripts/db.sh tables
+     ```
+   - Record the schema summary in the instance's `MEMORY.md` under a `## Database Schema` section
+
+   **Schema example** (adapt to the user's business needs):
+   ```sql
+   -- db/schema.sql
+   CREATE TABLE IF NOT EXISTS customers (
+     id          INTEGER PRIMARY KEY AUTOINCREMENT,
+     channel_id  TEXT NOT NULL UNIQUE,   -- 渠道用户标识（如飞书 open_id）
+     name        TEXT,
+     phone       TEXT,
+     status      TEXT DEFAULT 'active',  -- active / vip / blocked
+     created_at  TEXT DEFAULT (date('now')),
+     last_seen   TEXT DEFAULT (date('now'))
+   );
+   ```
+
+   **Schema design guidelines**:
+   - Always include a `channel_id` column to link records to the user's channel identity
+   - Use `TEXT DEFAULT (date('now'))` for date fields (SQLite has no native DATE type)
+   - Avoid storing PII beyond what's operationally necessary
+   - Keep schema simple — the agent performs DML only; complex joins should be avoided
 
 ### Step 5: Register Instance (L3 — requires user confirmation)
 1. Run:
