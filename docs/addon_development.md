@@ -48,9 +48,22 @@ An addon is an independent Git repository installed to the `addons/` directory. 
   "name": "my-addon",
   "version": "1.0.0",
   "description": "What this addon does",
-  "auto-activate": false   // set true to auto-instantiate crew templates on apply
+  "internal_crews": ["my-ops-bot"],       // crew templates that are internal (managed by Main Agent)
+  "external_crews": ["my-customer-bot"],  // crew templates that are external (managed by HRBP)
+  "auto-activate": false                  // set true to auto-instantiate crew templates on apply
 }
 ```
+
+### Crew Type Declaration
+
+The `internal_crews` and `external_crews` arrays in `addon.json` are the **sole authority** for crew-type assignment:
+
+- Templates listed in `internal_crews` → **internal** (inherits all global skills, Main Agent manages lifecycle)
+- Templates listed in `external_crews` → **external** (uses DECLARED_SKILLS only, HRBP manages lifecycle)
+- Templates in neither array → defaults to **external** with a warning
+- A template listed in **both** arrays → error, `apply-addons.sh` will abort
+
+The `crew-type:` field in `SOUL.md` is **not required** for addon templates. If present, it will be overwritten by `apply-addons.sh` to match the `addon.json` declaration.
 
 ---
 
@@ -130,20 +143,43 @@ To add or remove commands relative to the base tier, create an `ALLOWED_COMMANDS
 
 These adjustments are applied on top of the tier's base allowlist and reflected in `exec-approvals.json` automatically.
 
+### Skills Behavior by Crew Type
+
+**Internal crews** (`internal_crews`):
+- Inherit **all global skills** — every skill installed in `openclaw/skills/` (both built-in and addon-provided) is visible by default
+- Use `DENIED_SKILLS` to exclude specific skills that the crew should not access
+- `BUILTIN_SKILLS` file is still supported for backward compatibility but rarely needed since the default is already "all"
+
+**External crews** (`external_crews`):
+- Use **declaration mode** — only skills explicitly listed in `DECLARED_SKILLS` are visible
+- `DECLARED_SKILLS` can reference both global skills (from `openclaw/skills/`) and template-scoped skills (from `crew/<template>/skills/`)
+- Template-scoped skills are automatically appended (no need to list them in `DECLARED_SKILLS`)
+- `self-improving` skill is always blocked for external crews
+
 ### Instantiation Behavior
 
-By default, installed templates are **not auto-instantiated** — they become available in the HRBP template library and the user can instantiate them on demand.
+By default, installed templates are **not auto-instantiated** — they become available in the HRBP/Main Agent template library and the user can instantiate them on demand.
 
 To auto-instantiate on `apply-addons.sh`, set `"auto-activate": true` in `addon.json`. This creates `workspace-<template-id>` and registers the agent immediately. Use with caution: the instance ID will equal the template ID, and existing workspaces will be skipped (not overwritten).
 
-### `DENIED_SKILLS`
+### `DENIED_SKILLS` (internal crews only)
 
-If your crew template should not have access to certain built-in skills, list them one per line in `DENIED_SKILLS`:
+If your internal crew template should not have access to certain skills, list them one per line in `DENIED_SKILLS`:
 
 ```
 github
 gh-issues
 coding-agent
+```
+
+### `DECLARED_SKILLS` (external crews only)
+
+External crew templates must declare which skills they need in `DECLARED_SKILLS`:
+
+```
+customer-db
+smart-search
+rss-reader
 ```
 
 ---

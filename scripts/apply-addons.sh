@@ -252,47 +252,62 @@ for addon_dir in "$ADDONS_DIR"/*/; do
   # ─── 第四层：Crew 模板安装（crew/ → crews/） ─────────────────
   if [ -d "$addon_dir/crew" ]; then
     echo "  🤖 Installing crew templates..."
+
+    # 从 addon.json 读取 internal_crews / external_crews 数组（crew-type 的唯一权威来源）
+    # addon 模板的 SOUL.md 不要求包含 crew-type 字段；若包含则被此声明覆盖
+    addon_crew_lists="$(node -e "
+      try {
+        const a = JSON.parse(require('fs').readFileSync('${addon_dir}addon.json','utf8'));
+        const i = Array.isArray(a.internal_crews) ? a.internal_crews : [];
+        const e = Array.isArray(a.external_crews) ? a.external_crews : [];
+        console.log(JSON.stringify({ internal: i, external: e }));
+      } catch(err) { console.log(JSON.stringify({ internal: [], external: [] })); }
+    " 2>/dev/null || echo '{"internal":[],"external":[]}')"
+
     for template_ws in "$addon_dir"/crew/*/; do
       [ -d "$template_ws" ] || continue
-      # 需要至少有 SOUL.md 才算��效的模板
+      # 需要至少有 SOUL.md 才算有效的模板
       [ -f "${template_ws}SOUL.md" ] || continue
 
       template_id="$(basename "$template_ws")"
 
-      # 读取 addon.json 中的 crew-type 声明（全局或 per-template）
-      addon_crew_type="$(node -e "
-        try {
-          const a = JSON.parse(require('fs').readFileSync('${addon_dir}addon.json','utf8'));
-          const perTemplate = a['crew-types'] && a['crew-types']['${template_id}'];
-          const global = a['crew-type'];
-          const t = perTemplate || global || '';
-          console.log(['internal','external'].includes(t) ? t : '');
-        } catch(e) { console.log(''); }
+      # 从 addon.json 的 internal_crews / external_crews 数组确定 crew-type
+      addon_crew_type="$(ADDON_CREW_LISTS="$addon_crew_lists" node -e "
+        const { internal, external } = JSON.parse(process.env.ADDON_CREW_LISTS);
+        const id = '$template_id';
+        if (internal.includes(id) && external.includes(id)) console.log('CONFLICT');
+        else if (internal.includes(id)) console.log('internal');
+        else if (external.includes(id)) console.log('external');
+        else console.log('');
       " 2>/dev/null || echo "")"
 
-      # 读取 SOUL.md 中的 crew-type，未声明时默认为 external
-      soul_crew_type="$(grep -m1 '^crew-type:' "${template_ws}SOUL.md" 2>/dev/null \
-        | sed 's/^crew-type:[[:space:]]*//' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
-      if [ "$soul_crew_type" != "internal" ] && [ "$soul_crew_type" != "external" ]; then
-        echo "    ⚠️  template $template_id missing valid crew-type declaration in SOUL.md, defaulting to external"
-        soul_crew_type="external"
-      fi
-
-      if [ -n "$addon_crew_type" ] && [ "$addon_crew_type" != "$soul_crew_type" ]; then
-        echo "    ❌ crew-type mismatch for $template_id: addon.json says '$addon_crew_type', SOUL.md says '$soul_crew_type'"
+      if [ "$addon_crew_type" = "CONFLICT" ]; then
+        echo "    ❌ template $template_id listed in both internal_crews and external_crews"
         exit 1
+      elif [ -z "$addon_crew_type" ]; then
+        echo "    ⚠️  template $template_id not in internal_crews or external_crews, defaulting to external"
+        addon_crew_type="external"
       fi
 
-      addon_crew_type="$soul_crew_type"
       echo "    → $template_id (crew-type: $addon_crew_type)"
 
       # 安装模板到 crews/（代码仓中，供 HRBP/Main Agent 使用）
       template_dest="$CREWS_DIR/$template_id"
       if [ -d "$template_dest" ]; then
-        echo "    ⚠️  template $template_id already exists in crews/, skipping"
+        echo "    ⚠️  template $template_id already exists in crews/, skipping copy"
       else
         cp -r "$template_ws" "$template_dest"
         echo "    ✅ template $template_id installed to crews/"
+      fi
+
+      # 在 crews/ 中的 SOUL.md 上覆盖或注入 crew-type（addon.json 声明为权威来源）
+      # 确保 setup-crew.sh 重扫 crews/ 时能正确路由到 crew_templates/ 或 hrbp_templates/
+      if [ -f "$template_dest/SOUL.md" ]; then
+        if grep -q '^crew-type:' "$template_dest/SOUL.md" 2>/dev/null; then
+          sed -i "s/^crew-type:.*$/crew-type: $addon_crew_type/" "$template_dest/SOUL.md"
+        else
+          printf '\ncrew-type: %s\n' "$addon_crew_type" >> "$template_dest/SOUL.md"
+        fi
       fi
 
       # 同步到运行时模板目录（按 crew-type 分路由）
@@ -327,11 +342,16 @@ for addon_dir in "$ADDONS_DIR"/*/; do
         else
           mkdir -p "$dest"
           cp "${template_ws}"*.md "$dest/"
+          # 同步 crew-type 到 workspace 的 SOUL.md（addon.json 声明为准）
+          if [ -f "$dest/SOUL.md" ]; then
+            if grep -q '^crew-type:' "$dest/SOUL.md" 2>/dev/null; then
+              sed -i "s/^crew-type:.*$/crew-type: $addon_crew_type/" "$dest/SOUL.md"
+            else
+              printf '\ncrew-type: %s\n' "$addon_crew_type" >> "$dest/SOUL.md"
+            fi
+          fi
           if [ -f "${template_ws}ALLOWED_COMMANDS" ]; then
             cp "${template_ws}ALLOWED_COMMANDS" "$dest/"
-          fi
-          if [ -f "${template_ws}BUILTIN_SKILLS" ]; then
-            cp "${template_ws}BUILTIN_SKILLS" "$dest/"
           fi
           if [ -f "${template_ws}DENIED_SKILLS" ]; then
             cp "${template_ws}DENIED_SKILLS" "$dest/"
@@ -402,8 +422,8 @@ echo "🧾 Global shared skills catalog updated ($GLOBAL_SHARED_COUNT)"
 # ─── 重新同步 agents.list[].skills（纳入最��全局 skills）──────────
 if [ -f "$CONFIG_PATH" ] && [ -x "$PROJECT_ROOT/scripts/setup-crew.sh" ]; then
   if [ "$FORCE" = "true" ]; then
-    "$PROJECT_ROOT/scripts/setup-crew.sh" --force
+    CALLED_FROM_APPLY_ADDONS=true "$PROJECT_ROOT/scripts/setup-crew.sh" --force
   else
-    "$PROJECT_ROOT/scripts/setup-crew.sh"
+    CALLED_FROM_APPLY_ADDONS=true "$PROJECT_ROOT/scripts/setup-crew.sh"
   fi
 fi

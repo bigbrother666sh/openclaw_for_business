@@ -67,10 +67,13 @@ openclaw_for_business/
 - **技能两级体系**（与 OpenClaw 原生机制对齐）：
   - 全局共享：`skills/`（项目根目录）→ 安装到 `openclaw/skills/`，所有 Agent 可见
   - Agent 专属：`crews/<template>/skills/` → 安装到 `~/.openclaw/workspace-<instance>/skills/`，仅该实例可见
-  - **默认开放策略**：全部已启用内置 skill 对所有 Agent 开放，无需白名单配置
-    - `agents.list[].skills` 字段默认不设置（openclaw 原生行为：所有已启用 skill 可见）
-    - 如需屏蔽特定 skill，在 workspace 中放置 `DENIED_SKILLS` 文件（每行一个 skill 名称）
-    - 有屏蔽列表时，`setup-crew.sh` 自动计算 allowlist = 全部内置 - 屏蔽列表，写入 `agents.list[].skills`
+  - **对内 Crew（internal）技能继承策略**：默认继承全部 global skills（`openclaw/skills/` 下所有已安装技能）
+    - 可通过 `DENIED_SKILLS` 文件屏蔽特��技能
+    - `setup-crew.sh` 自动计算 allowlist = 全部 global skills - 屏蔽列表，写入 `agents.list[].skills`
+  - **对外 Crew（external）技能声明策略**：仅使用 `DECLARED_SKILLS` 中明确声明的技能
+    - 可声明 global skills 和模板专属 skills
+    - 模板专属 skills 自动追加，无需在 DECLARED_SKILLS 中列出
+    - `self-improving` 对外 Crew 始终禁用
   - **精简内置 skill 集**：`config-templates/openclaw.json` 中通过 `skills.entries` 禁用平台无关 skill
     - 禁用的是个人工具类（苹果生态、智能家居、社交软件等），保留通用工具
     - `apply-addons.sh` 每次运行时将禁用列表同步到 `~/.openclaw/openclaw.json`，确保升级后一致
@@ -98,7 +101,12 @@ addon 四层加载机制（按稳定性递减）：
 1. **overrides.sh** — pnpm overrides / 依赖替换（最稳健，不依赖行号）
 2. **patches/*.patch** — git patch 精确代码改动（上游更新时可能需调整）
 3. **skills/*/SKILL.md** — 全局技能安装（默认所有 Agent 可见）
-4. **crew/<template-id>/** — Crew 模板安装到 `crews/`（默认不自动实例化，需通过 HRBP 启用；addon.json 中 `auto-activate: true` 可自动实例化）
+4. **crew/<template-id>/** — Crew 模板安装到 `crews/`（默认不自动实例化，需通过 HRBP/Main Agent 启用；addon.json 中 `auto-activate: true` 可自动实例化）
+
+addon.json 中通过 `internal_crews` 和 `external_crews` 数组声明每个模板的 crew-type（唯一权威来源）：
+- `internal_crews` 中的模板 → internal，继承全部 global skills，由 Main Agent 管理
+- `external_crews` 中的模板 → external，仅使用 DECLARED_SKILLS，由 HRBP 管理
+- 模板 SOUL.md 中的 `crew-type:` 字段不要求存在，若存在会被 addon.json 声明覆盖
 
 addon 中的技能分两级：根目录 `skills/` 为全局技能；`crew/<template>/skills/` 为模板专属技能。
 

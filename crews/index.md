@@ -1,6 +1,9 @@
 # Crew 模板注册表
 
-> 本文件由 HRBP 维护，记录本机所有可用的 Crew 模板。
+> 本文件是**开发者参考**，综合列出项目中所有 Crew 模板。
+> 运行时由各自的管理者维护独立索引：
+> - `~/.openclaw/crew_templates/index.md` — 对内模板目录，由 **Main Agent** 维护
+> - `~/.openclaw/hrbp_templates/index.md` — 对外模板目录，由 **HRBP** 维护
 > Crew 类型说明详见 `CREW_TYPES.md`。
 
 ## 对内 Crew 模板（Internal — 内置，由 Main Agent 管理）

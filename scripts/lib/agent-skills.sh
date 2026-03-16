@@ -72,6 +72,9 @@ list_builtin_skill_names() {
   done | sort
 }
 
+# [DEPRECATED] 旧版硬编码基线 skill 列表
+# 已被 list_builtin_skill_names 取代（对内 Crew 默认继承 openclaw/skills/ 下全部技能）
+# 保留此函数供参考，不再用于 resolve_agent_skills_json
 list_default_global_skill_names() {
   cat <<'EOF'
 1password
@@ -217,9 +220,11 @@ console.log(JSON.stringify(Array.from(new Set(lines))));
   fi
 
   # ── inherit 模式（对内 Crew）──
-  local default_builtins=""
-  default_builtins="$(list_default_global_skill_names)"
+  # 对内 Crew 默认继承全部 global skills（openclaw/skills/ 下所有已安装技能）
+  local all_global_skills=""
+  all_global_skills="$(list_builtin_skill_names "$project_root")"
 
+  # BUILTIN_SKILLS 仅用于补充尚未安装到 openclaw/skills/ 的额外技能（兼容保留）
   local additional_builtins=""
   additional_builtins="$(resolve_additional_builtin_skill_names \
     "$explicit_builtin_tokens" \
@@ -227,7 +232,7 @@ console.log(JSON.stringify(Array.from(new Set(lines))));
     "$project_root")"
 
   local merged_global_skills=""
-  merged_global_skills="$(printf '%s\n%s\n' "$default_builtins" "$additional_builtins" \
+  merged_global_skills="$(printf '%s\n%s\n' "$all_global_skills" "$additional_builtins" \
     | awk 'NF && !seen[$0]++')"
 
   local denied_names

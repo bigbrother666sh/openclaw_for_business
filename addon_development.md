@@ -89,11 +89,27 @@ addons/<your-addon-name>/
   "version": "1.0.0",
   "description": "Short description of what this addon does",
   "openclaw_version": "2026.3.11",
-  "openclaw_commit": "29dc65403faf41dc52944c02a0db9fa4b8457395"
+  "openclaw_commit": "29dc65403faf41dc52944c02a0db9fa4b8457395",
+  "internal_crews": ["my-ops-bot"],
+  "external_crews": ["my-customer-bot"],
+  "auto-activate": false
 }
 ```
 
 The `openclaw_version` and `openclaw_commit` fields **must match** the values in `openclaw.version` at the time you develop and test the addon. This lets users and CI detect version mismatches early.
+
+#### Crew Type Declaration
+
+The `internal_crews` and `external_crews` arrays are the **sole authority** for crew-type assignment in addons:
+
+| Array | Crew Type | Skills | Lifecycle Manager |
+|-------|-----------|--------|-------------------|
+| `internal_crews` | internal | Inherits **all** global skills; use `DENIED_SKILLS` to exclude | Main Agent |
+| `external_crews` | external | Only `DECLARED_SKILLS`; can include global and template-scoped skills | HRBP |
+
+- A template not listed in either array defaults to **external** with a warning.
+- A template listed in **both** arrays causes an error and aborts installation.
+- The `crew-type:` field in `SOUL.md` is **not required**. If present, it will be overwritten by `apply-addons.sh` to match the `addon.json` declaration.
 
 ---
 
@@ -137,10 +153,14 @@ If you want to restrict a skill to specific agents, place it under `crews/<templ
 ### Layer 4 — `crews/<template-id>/` (crew templates)
 
 Provide a complete crew template (8 workspace .md files + optional skills). During `apply-addons.sh`, the template is:
-1. Installed to `crews/<template-id>/` and synced to `~/.openclaw/hrbp-templates/<template-id>/`
-2. Registered in the template index (`crews/index.md`)
-3. Optionally auto-activated as an instance (if `addon.json` has `"auto-activate": true`)
-4. Instance lifecycle managed by the built-in HRBP agent going forward
+1. Crew-type determined from `addon.json` arrays (`internal_crews` / `external_crews`)
+2. Installed to `crews/<template-id>/` with `crew-type:` in `SOUL.md` set/overwritten accordingly
+3. Synced to runtime directory: `~/.openclaw/crew_templates/` (internal) or `~/.openclaw/hrbp_templates/` (external)
+4. Optionally auto-activated as an instance (if `addon.json` has `"auto-activate": true`)
+
+**Skills behavior:**
+- **Internal crews**: inherit all global skills by default. Use `DENIED_SKILLS` to block specific skills.
+- **External crews**: only see skills listed in `DECLARED_SKILLS`. Can include both global skills and template-scoped skills.
 
 Skills placed under `crews/<template-id>/skills/<skill-name>/SKILL.md` are installed as template-specific skills, visible only to instances created from that template.
 

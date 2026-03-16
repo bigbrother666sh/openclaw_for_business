@@ -7,6 +7,7 @@ set -e
 PROJECT_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 CREWS_DIR="$PROJECT_ROOT/crews"
+ADDONS_DIR="$PROJECT_ROOT/addons"
 OPENCLAW_HOME="$HOME/.openclaw"
 CONFIG_PATH="$OPENCLAW_HOME/openclaw.json"
 FORCE=false
@@ -163,6 +164,16 @@ if [ ! -d "$CREWS_DIR" ]; then
   exit 1
 fi
 
+# 检查是否应通过 apply-addons.sh 调用（确保 global skills 已安装到 openclaw/skills/）
+CALLED_FROM_APPLY_ADDONS="${CALLED_FROM_APPLY_ADDONS:-false}"
+if [ "$CALLED_FROM_APPLY_ADDONS" != "true" ] && [ -d "$ADDONS_DIR" ]; then
+  addon_count="$(find "$ADDONS_DIR" -mindepth 2 -maxdepth 2 -name addon.json 2>/dev/null | wc -l)"
+  if [ "$addon_count" -gt 0 ]; then
+    echo "⚠️  检测到 $addon_count 个 addon，建议通过 apply-addons.sh 运行以确保 addon global skills 正确安装"
+    echo "   直接运行 setup-crew.sh 可能导致 addon 提供的 global skills 未被纳入 crew 技能配置"
+  fi
+fi
+
 echo "📦 Setting up Agent System (crews)..."
 
 # ─── 1. 安装内置 Crew workspace（main / hrbp / it-engineer） ────
@@ -260,9 +271,9 @@ done
 if [ -d "$CREWS_DIR/shared" ]; then
   cp "$CREWS_DIR/shared/"*.md "$CREW_TEMPLATES_DEST/"
 fi
-# 同步 index.md
-if [ -f "$CREWS_DIR/index.md" ]; then
-  cp "$CREWS_DIR/index.md" "$CREW_TEMPLATES_DEST/index.md"
+# 同步对内专属索引（crew_index.md → index.md，由 Main Agent 维护）
+if [ -f "$CREWS_DIR/crew_index.md" ]; then
+  cp "$CREWS_DIR/crew_index.md" "$CREW_TEMPLATES_DEST/index.md"
 fi
 echo "  ✅ Internal crew templates synced to $CREW_TEMPLATES_DEST"
 
@@ -280,9 +291,9 @@ for template_dir in "$CREWS_DIR"/*/; do
   [ "$crew_type" = "external" ] || continue
   cp -r "$template_dir" "$HRBP_TEMPLATES_DEST/$template_id"
 done
-# 同步 index.md（含外部模板列表）
-if [ -f "$CREWS_DIR/index.md" ]; then
-  cp "$CREWS_DIR/index.md" "$HRBP_TEMPLATES_DEST/index.md"
+# 同步对外专属索引（hrbp_index.md → index.md，由 HRBP 维护）
+if [ -f "$CREWS_DIR/hrbp_index.md" ]; then
+  cp "$CREWS_DIR/hrbp_index.md" "$HRBP_TEMPLATES_DEST/index.md"
 fi
 echo "  ✅ External crew templates synced to $HRBP_TEMPLATES_DEST"
 
