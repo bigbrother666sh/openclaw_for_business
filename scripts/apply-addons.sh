@@ -270,12 +270,12 @@ for addon_dir in "$ADDONS_DIR"/*/; do
         } catch(e) { console.log(''); }
       " 2>/dev/null || echo "")"
 
-      # SOUL.md 中的 crew-type 必须显式声明
+      # 读取 SOUL.md 中的 crew-type，未声明时默认为 external
       soul_crew_type="$(grep -m1 '^crew-type:' "${template_ws}SOUL.md" 2>/dev/null \
         | sed 's/^crew-type:[[:space:]]*//' | tr -d '[:space:]' | tr '[:upper:]' '[:lower:]')"
       if [ "$soul_crew_type" != "internal" ] && [ "$soul_crew_type" != "external" ]; then
-        echo "    ❌ template $template_id missing valid crew-type declaration in SOUL.md (expected internal|external)"
-        exit 1
+        echo "    ⚠️  template $template_id missing valid crew-type declaration in SOUL.md, defaulting to external"
+        soul_crew_type="external"
       fi
 
       if [ -n "$addon_crew_type" ] && [ "$addon_crew_type" != "$soul_crew_type" ]; then
