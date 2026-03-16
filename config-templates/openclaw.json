@@ -3,7 +3,10 @@
     "enabled": true,
     "headless": false,
     "defaultProfile": "openclaw",
-    "extraArgs": ["--window-size=1920,1080", "--window-position=0,0"],
+    "extraArgs": [
+      "--window-size=1920,1080",
+      "--window-position=0,0"
+    ],
     "ssrfPolicy": {
       "dangerouslyAllowPrivateNetwork": true
     }
@@ -19,7 +22,10 @@
           {
             "id": "Pro/moonshotai/Kimi-K2.5",
             "name": "Kimi K2.5",
-            "input": ["text", "image"],
+            "input": [
+              "text",
+              "image"
+            ],
             "cost": {
               "input": 0.004,
               "output": 0.021,
@@ -32,7 +38,9 @@
           {
             "id": "Pro/MiniMaxAI/MiniMax-M2.5",
             "name": "MiniMax M2.5",
-            "input": ["text"],
+            "input": [
+              "text"
+            ],
             "cost": {
               "input": 0.0021,
               "output": 0.0084,
@@ -45,7 +53,9 @@
           {
             "id": "Pro/zai-org/GLM-5",
             "name": "GLM-5",
-            "input": ["text"],
+            "input": [
+              "text"
+            ],
             "cost": {
               "input": 0.006,
               "output": 0.022,
@@ -64,7 +74,9 @@
       "thinkingDefault": "medium",
       "model": {
         "primary": "siliconflow/Pro/zai-org/GLM-5",
-        "fallbacks": ["siliconflow/Pro/MiniMaxAI/MiniMax-M2.5"]
+        "fallbacks": [
+          "siliconflow/Pro/MiniMaxAI/MiniMax-M2.5"
+        ]
       },
       "imageModel": {
         "primary": "siliconflow/Pro/moonshotai/Kimi-K2.5"
@@ -98,7 +110,11 @@
           "self-improving"
         ],
         "subagents": {
-          "allowAgents": ["main", "hrbp", "it-engineer"]
+          "allowAgents": [
+            "main",
+            "hrbp",
+            "it-engineer"
+          ]
         },
         "tools": {
           "exec": {
@@ -239,7 +255,9 @@
           "appId": "",
           "appSecret": "",
           "dmPolicy": "open",
-          "allowFrom": ["*"],
+          "allowFrom": [
+            "*"
+          ],
           "groupPolicy": "allowlist"
         },
         "hrbp-bot": {
@@ -247,7 +265,9 @@
           "appId": "",
           "appSecret": "",
           "dmPolicy": "open",
-          "allowFrom": ["*"],
+          "allowFrom": [
+            "*"
+          ],
           "groupPolicy": "allowlist"
         },
         "it-engineer-bot": {
@@ -255,7 +275,9 @@
           "appId": "",
           "appSecret": "",
           "dmPolicy": "open",
-          "allowFrom": ["*"],
+          "allowFrom": [
+            "*"
+          ],
           "groupPolicy": "allowlist"
         }
       }
@@ -377,7 +399,7 @@
         "enabled": false
       },
       "mcporter": {
-        "enabled": true
+        "enabled": false
       },
       "oracle": {
         "enabled": false

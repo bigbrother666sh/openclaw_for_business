@@ -5,10 +5,10 @@
 #   两种技能解析模式，由 SOUL.md 中的 crew-type 决定：
 #
 #   inherit 模式（对内 Crew，crew-type: internal）：
-#   - 每个 Agent 默认都使用「全局基线技能集」（见 list_default_global_skill_names）
-#   - 项目级 / add-on 全局 skills 不自动继承；需在 BUILTIN_SKILLS 中显式声明
-#   - self-improving 仍在基线技能中，确保对内 Crew 保留自我改进能力
-#   - 可通过 BUILTIN_SKILLS（或显式参数）在基线之上追加 bundled skills
+#   - 基线：list_default_global_skill_names 中 11 个指定的上游内置技能
+#   - 自动追加：apply-addons.sh 写入 GLOBAL_SHARED_SKILLS 的 addon/项目全局技能
+#   - 可通过 BUILTIN_SKILLS（或显式参数）在此之上追加 Agent 专属技能
+#     （如 it-engineer 的 github / gh-issues / coding-agent）
 #   - 可通过 DENIED_SKILLS（或显式参数）从最终列表中排除技能
 #
 #   declare 模式（对外 Crew，crew-type: external）：
@@ -72,9 +72,8 @@ list_builtin_skill_names() {
   done | sort
 }
 
-# [DEPRECATED] 旧版硬编码基线 skill 列表
-# 已被 list_builtin_skill_names 取代（对内 Crew 默认继承 openclaw/skills/ 下全部技能）
-# 保留此函数供参考，不再用于 resolve_agent_skills_json
+# OFB 指定的全局基线技能（对所有对内 Crew 统一开放的 11 个上游内置技能）
+# 变更须同步更新 config-templates/openclaw.json 的 skills.entries 确保这些技能处于 enabled 状态
 list_default_global_skill_names() {
   cat <<'EOF'
 1password
@@ -88,7 +87,6 @@ tmux
 weather
 xurl
 video-frames
-self-improving
 EOF
 }
 
@@ -220,11 +218,20 @@ console.log(JSON.stringify(Array.from(new Set(lines))));
   fi
 
   # ── inherit 模式（对内 Crew）──
-  # 对内 Crew 默认继承全部 global skills（openclaw/skills/ 下所有已安装技能）
-  local all_global_skills=""
-  all_global_skills="$(list_builtin_skill_names "$project_root")"
+  # 层次：① 11 个基线上游技能  ② addon/项目全局技能  ③ Agent 专属技能（BUILTIN_SKILLS）  ④ -DENIED  ⑤ +workspace
 
-  # BUILTIN_SKILLS 仅用于补充尚未安装到 openclaw/skills/ 的额外技能（兼容保留）
+  # ① OFB 指定的 11 个基线技能
+  local default_builtins=""
+  default_builtins="$(list_default_global_skill_names)"
+
+  # ② addon / 项目安装的全局技能（apply-addons.sh 写入 GLOBAL_SHARED_SKILLS 文件）
+  local addon_global_skills=""
+  local global_shared_file="$openclaw_home/GLOBAL_SHARED_SKILLS"
+  if [ -f "$global_shared_file" ]; then
+    addon_global_skills="$(awk 'NF' "$global_shared_file")"
+  fi
+
+  # ③ Agent 专属额外技能（来自 BUILTIN_SKILLS 文件或命令行参数）
   local additional_builtins=""
   additional_builtins="$(resolve_additional_builtin_skill_names \
     "$explicit_builtin_tokens" \
@@ -232,7 +239,7 @@ console.log(JSON.stringify(Array.from(new Set(lines))));
     "$project_root")"
 
   local merged_global_skills=""
-  merged_global_skills="$(printf '%s\n%s\n' "$all_global_skills" "$additional_builtins" \
+  merged_global_skills="$(printf '%s\n%s\n%s\n' "$default_builtins" "$addon_global_skills" "$additional_builtins" \
     | awk 'NF && !seen[$0]++')"
 
   local denied_names
