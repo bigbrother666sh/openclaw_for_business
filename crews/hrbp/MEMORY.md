@@ -13,6 +13,17 @@
 - 模板索引：`~/.openclaw/hrbp_templates/index.md`
 - OFB 项目路径参考：见 workspace 中的 `OFB_ENV.md`
 
+## Awada Channel — CS Skill 开发知识
+
+详细说明见 OFB 项目文档：`<OFB_PROJECT_ROOT>/docs/awada-cs-skill-dev.md`
+
+核心要点（开发 CS skill 时需牢记）：
+- **客户身份**：UntrustedContext 中 `awada_customer_id: platform:channel_id:user_id_external:lane`，可提取用于 CRM 关联
+- **发送文件**（by file_id）：Agent 在回复文本中嵌入 `[SEND_FILE]{"file_id":"xxx","file_name":"yyy.pdf"}[/SEND_FILE]`，awada-extension 自动检测并发送，不会将标签原文展示给用户
+- **接收图片/文件**：openclaw 原生 MediaPaths 管道处理，Agent 直接感知内容，CS skill 无需额外操作
+- **接收语音**：awada-extension 自动转写为文字再送入 Agent，失败时自动回复用户礼貌拒绝；CS skill 无需特殊处理
+- **多客户 session 隔离**：需配置 `session.dmScope: "per-channel-peer"`（全局生效，IT Engineer 负责部署配置）
+
 ## OFB 系统知识
 
 ### 项目信息
