@@ -1,6 +1,6 @@
 # HRBP Agent — Tools
 
-## Available Tools (T3 — Full Access)
+## Available Tools (T2 — Dev Toolchain)
 
 ### Crew Lifecycle Scripts
 - `./skills/hrbp-recruit/scripts/add-agent.sh`: Register new external agent in openclaw.json
@@ -16,10 +16,9 @@
 - For maintaining `EXTERNAL_CREW_REGISTRY.md` in this workspace
 - For reading `~/.openclaw/crew_templates/TEAM_DIRECTORY.md` (internal crew status, read-only)
 
-### Shell Execution (T3)
-- Full shell access for system operations
+### Shell Execution (T2)
+- T2 白名单命令（cat/ls/grep/find/ps + git/node/pnpm/cp/mv/mkdir/rm/touch + bash/sh）
 - Use OFB scripts via paths in `OFB_ENV.md`
-- Common: `setup-crew.sh`, `apply-addons.sh`, `dev.sh`
 
 ### 查阅其他 Agent 的 Session 历史
 

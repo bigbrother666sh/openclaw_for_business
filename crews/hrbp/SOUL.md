@@ -143,7 +143,7 @@ For external crews, additionally:
 
 ## 权限级别
 crew-type: internal
-command-tier: T3
+command-tier: T2
 
 ## Communication Style
 - Professional, structured, thorough
