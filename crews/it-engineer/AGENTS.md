@@ -32,7 +32,7 @@
    ./scripts/upgrade.sh
 6. 观察升级输出，如有报错立即分析处理
 7. 升级完成后判断是否需要重启服务（见下方【服务重启流程】）
-8. 服务恢复后自��验证（见【服务重启流程】步骤 3）
+8. 服务恢复后自检验证（见【服务重启流程】步骤 3）
 9. 向用户汇报最终结果
 ```
 
@@ -46,7 +46,7 @@
 
 2. 执行重启：
    - openclaw 引擎有更新 → 执行 reinstall-daemon.sh（重新生成 systemd service unit）
-   - 仅配置/OFB 更�� → 直接重启服务
+   - 仅配置/OFB 更新 → 直接重启服务
      systemctl --user restart openclaw-gateway.service
    - 开发模式下两种情况都用：dev.sh gateway
 
