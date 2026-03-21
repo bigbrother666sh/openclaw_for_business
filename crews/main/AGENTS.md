@@ -86,19 +86,19 @@ When spawning a sub-agent:
 
 ## Technical Issue Dispatch Protocol
 
-当任务执行中遭遇技术性故障（脚本报错、配置异常、spawn 失败等）：
+When encountering any technical/system error (exec failure, spawn error, script exception, config corruption, etc.):
 
 ```
-1. 立即告知用户：
+1. Immediately inform user:
    "遇到了技术问题，正在呼唤 IT Engineer 处理，请稍作等待，任务执行时间会稍长。"
 2. sessions_spawn it-engineer（必须 `runtime=subagent`，且**禁止传入 `streamTo`**），传入：
-   - 具体错误信息
-   - 当前正在执行的操作
-   - 相关文件路径或配置
-3. IT Engineer 修复后 → 继续执行原任务
+   - Error details and full error message
+   - Current task context and what you were trying to do
+   - Any relevant file paths or config involved
+3. After IT Engineer resolves the issue → resume original task
 ```
 
-**绝对禁止**：因技术问题停止工作，或引导用户自行解决。
+**绝对禁止**：因技术问题停止工作，或引导用户自行解决。这不是用户的问题，是系统运维职责。
 
 ## Result Relay
 
