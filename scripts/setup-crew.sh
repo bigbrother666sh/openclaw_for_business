@@ -202,6 +202,7 @@ for agent_id in $BUILTIN_CREWS; do
       [ -f "$agent_dir/$f" ] && cp "$agent_dir/$f" "$dest/$f"
     done
     echo "  🔄 workspace-$agent_id config files synced from template"
+    inject_file_edit_guide "$dest/TOOLS.md"
 
     # 同步 DENIED/BUILTIN 配置（若模板有）
     if [ -f "$agent_dir/DENIED_SKILLS" ]; then
@@ -242,6 +243,7 @@ for agent_id in $BUILTIN_CREWS; do
     cp -r "$agent_dir/skills" "$dest/"
   fi
   echo "  ✅ workspace-$agent_id installed"
+  inject_file_edit_guide "$dest/TOOLS.md"
 done
 
 # ─── 2. 复制共享协议到每个已安装的内置 workspace ─────────────────
