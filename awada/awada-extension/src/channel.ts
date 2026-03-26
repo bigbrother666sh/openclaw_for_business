@@ -10,7 +10,7 @@ import {
   listAwadaAccountIds,
   resolveDefaultAwadaAccountId,
 } from "./accounts.js";
-import { awadaOnboardingAdapter } from "./onboarding.js";
+import { awadaSetupWizard } from "./onboarding.js";
 import { awadaOutbound } from "./outbound.js";
 import { probeAwada } from "./probe.js";
 import type { ResolvedAwadaAccount, AwadaConfig } from "./types.js";
@@ -68,7 +68,7 @@ export const awadaPlugin: ChannelPlugin<ResolvedAwadaAccount> = {
     listAccountIds: (cfg) => listAwadaAccountIds(cfg),
     resolveAccount: (cfg, accountId) => resolveAwadaAccount({ cfg, accountId }),
     defaultAccountId: (cfg) => resolveDefaultAwadaAccountId(cfg),
-    setAccountEnabled: ({ cfg, enabled }) => ({
+    setAccountEnabled: ({ cfg, accountId: _accountId, enabled }) => ({
       ...cfg,
       channels: {
         ...cfg.channels,
@@ -78,7 +78,7 @@ export const awadaPlugin: ChannelPlugin<ResolvedAwadaAccount> = {
         },
       },
     }),
-    deleteAccount: ({ cfg }) => {
+    deleteAccount: ({ cfg, accountId: _accountId }) => {
       const next = { ...cfg } as ClawdbotConfig;
       const nextChannels = { ...cfg.channels };
       delete (nextChannels as Record<string, unknown>).awada;
@@ -107,7 +107,7 @@ export const awadaPlugin: ChannelPlugin<ResolvedAwadaAccount> = {
   },
   setup: {
     resolveAccountId: () => DEFAULT_ACCOUNT_ID,
-    applyAccountConfig: ({ cfg }) => ({
+    applyAccountConfig: ({ cfg, accountId: _accountId, input: _input }) => ({
       ...cfg,
       channels: {
         ...cfg.channels,
@@ -118,7 +118,7 @@ export const awadaPlugin: ChannelPlugin<ResolvedAwadaAccount> = {
       },
     }),
   },
-  onboarding: awadaOnboardingAdapter,
+  setupWizard: awadaSetupWizard,
   outbound: awadaOutbound,
   status: {
     defaultRuntime: createDefaultChannelRuntimeState(DEFAULT_ACCOUNT_ID, { port: null }),
