@@ -7,9 +7,9 @@
 - `nano-pdf`: Read PDF documents from knowledge base
 - `xurl`: Fetch web content for information lookup
 - `customer-db`: Persistent SQLite database for customer records
-- `demo_send`: Send product demo material to the customer
+- `demo_send`: Send product demo material — via `message` tool `sendAttachment`
 - `exp_invite`: Invite the customer into the experience group
-- `payment_send`: Send purchase/payment path to the customer
+- `payment_send`: Send purchase QR code — via `message` tool `sendAttachment`
 - File write: Record feedback to `feedback/YYYY-MM-DD.md` (append mode)
 
 ## Tool Usage Rules
@@ -27,7 +27,7 @@
 - 确保数据库与 `cs_record` 可用
 - 为当前客户创建默认记录（如不存在）
 - 注入当前客户的 `peer / business_status / purpose / prompt_source / club_in`
-- 对支付成功 / club 加入等控制事件进行静默写库
+- 对支付成功 / club 加入等���制事件进行静默写库
 
 **agent 侧需要做的事**：
 - 把注入的 CustomerDB 字段视为当前客户状态的唯一来源
@@ -55,24 +55,46 @@ bash ./skills/customer-db/scripts/db.sh <subcommand>
 - schema 变更须联系 HRBP 通过升级流程处理，不得自行修改
 - 不必在每次对话开始时手动 `ensure` 或手动插默认记录，除非在排障场景下确有必要
 
-### demo_send
-- 用于发送 demo 视频
-- 可按产品线自动选择默认视频：
+### demo_send — 发送 Demo 材料
+
+通过 `message` 工具的 `sendAttachment` 动作发送预存在微信网盘中的 demo 文件：
+
+```
+message(action="sendAttachment", file_name="wiseflow_pro_cn_hd_speech.mp4")
+```
+
+- 可按产品线选择：
   - `wiseflow4x-pro` → `wiseflow_pro_cn_hd_speech.mp4`
-  - `wiseflow5x` → `wiseflow5x.mp4`
-  - `ofb` → 同样发送 `wiseflow5x.mp4`
+  - `wiseflow5x` / `ofb` → `wiseflow5x.mp4`
 - 发送后必须继续追问客户需求
 - 最后必须提醒用户去官网和 GitHub 获取最新产品信息
 
 ### exp_invite
-- 用于发送体验群邀请控制消息
+
+通过 bash 脚本发送体验群邀请控制消息：
+
+```bash
+bash ./skills/exp_invite/scripts/invite.sh --user-id-external "<meta.user_id_external>"
+```
+
 - 若当前客户已是 `exp_invited`，不要重复邀请，回到主动销售推进流程
 
-### payment_send
-- 仅根据购买目标发送对应的付款二维码图片
-- `club`：发送 club168.jpg
-- `subs`：发送 Pro488.jpg
-- 发送后必须追加付款提示；若是 `subs`，还要提醒先去官网注册账号并在订单里填写
+### payment_send — 发送付款二维码
+
+通过 `message` 工具的 `sendAttachment` 动作发送预存在微信网盘中的付款二维码：
+
+```
+message(action="sendAttachment", file_name="club168.jpg")
+```
+
+| 模式 | 文件名 | 说明 |
+|------|--------|------|
+| club | `club168.jpg` | VIP Club 一年会员（168元） |
+| subs | `Pro488.jpg` | Pro 版订阅一年（488元） |
+| topup | `jiagou100.jpg` | 算力加购（100元��� |
+
+- 发送后必须追加付款提示
+- 若是 `subs`，还要提醒先去官网注册账号并在订单里填写
 
 ### Feedback Recording
 - Feedback file path: `feedback/YYYY-MM-DD.md` (relative to this workspace)

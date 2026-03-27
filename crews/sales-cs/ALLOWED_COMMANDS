@@ -4,6 +4,4 @@
 
 +./skills/customer-db/scripts/db.sh
 +./skills/customer-db/scripts/peer.sh
-+./skills/demo_send/scripts/send-demo.sh
 +./skills/exp_invite/scripts/invite.sh
-+./skills/payment_send/scripts/send-payment.sh

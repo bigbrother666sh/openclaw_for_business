@@ -11,6 +11,7 @@ import {
   resolveDefaultAwadaAccountId,
 } from "./accounts.js";
 import { awadaSetupWizard } from "./onboarding.js";
+import { awadaMessageActions } from "./message-actions.js";
 import { awadaOutbound } from "./outbound.js";
 import { probeAwada } from "./probe.js";
 import type { ResolvedAwadaAccount, AwadaConfig } from "./types.js";
@@ -41,6 +42,8 @@ export const awadaPlugin: ChannelPlugin<ResolvedAwadaAccount> = {
   agentPrompt: {
     messageToolHints: () => [
       "- Awada targeting: replies are routed back to the originating WeChat user automatically.",
+      '- To send a pre-stored WeChat cloud file or image, use action="sendAttachment" with file_name="<filename>".',
+      "  Example: message(action=\"sendAttachment\", file_name=\"company_logo.jpg\")",
     ],
   },
   reload: { configPrefixes: ["channels.awada"] },
@@ -120,6 +123,7 @@ export const awadaPlugin: ChannelPlugin<ResolvedAwadaAccount> = {
   },
   setupWizard: awadaSetupWizard,
   outbound: awadaOutbound,
+  actions: awadaMessageActions,
   status: {
     defaultRuntime: createDefaultChannelRuntimeState(DEFAULT_ACCOUNT_ID, { port: null }),
     buildChannelSummary: ({ snapshot }) =>
