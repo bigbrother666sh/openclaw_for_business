@@ -80,23 +80,37 @@ export const awadaOutbound: ChannelOutboundAdapter = {
       throw new Error("[awada] redisUrl not configured");
     }
 
-    // If a mediaUrl is provided, route through sendMediaToAwada.
-    // - http/https URL → file_url (image or file by extension)
-    // - Plain name (no scheme) → file_name for pre-stored WeChat cloud files
+    // Route mediaUrl to sendMediaToAwada:
+    // - http/https URL → file_url
+    // - plain filename (no path separators) → file_name for pre-stored WeChat cloud files
+    // - local absolute path or anything else → fall back to text (not supported)
     if (mediaUrl?.trim()) {
       const url = mediaUrl.trim();
-      const media = /^https?:\/\//i.test(url)
-        ? buildMediaContentFromUrl(url)
-        : buildMediaContentFromName({ file_name: url });
-      const streamId = await sendMediaToAwada({
-        redisUrl: account.redisUrl,
-        target,
-        media,
-        replyToEventId: randomUUID(),
-        correlationId: randomUUID(),
-        traceId: randomUUID(),
-      });
-      return { channel: "awada", messageId: streamId };
+      if (/^https?:\/\//i.test(url)) {
+        const media = buildMediaContentFromUrl(url);
+        const streamId = await sendMediaToAwada({
+          redisUrl: account.redisUrl,
+          target,
+          media,
+          replyToEventId: randomUUID(),
+          correlationId: randomUUID(),
+          traceId: randomUUID(),
+        });
+        return { channel: "awada", messageId: streamId };
+      }
+      if (!url.includes("/") && !url.includes("\\")) {
+        const media = buildMediaContentFromName({ file_name: url });
+        const streamId = await sendMediaToAwada({
+          redisUrl: account.redisUrl,
+          target,
+          media,
+          replyToEventId: randomUUID(),
+          correlationId: randomUUID(),
+          traceId: randomUUID(),
+        });
+        return { channel: "awada", messageId: streamId };
+      }
+      // Local path or unsupported scheme — fall through to text fallback
     }
 
     // No media reference — fall back to text body
